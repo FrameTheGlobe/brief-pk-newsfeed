@@ -701,12 +701,15 @@ function renderFooter() {
 
 function fullRender() {
   const filtered = getFiltered();
+  const isDashboardMode = (State.activeCategory === 'All' && !State.searchQuery);
 
-  // Show hero section for 'All' only
-  const heroSection = document.getElementById('heroSection');
-  if (heroSection) {
-    heroSection.style.display = (State.activeCategory === 'All' && !State.searchQuery) ? '' : 'none';
-  }
+  // Dashboard Row 1 (Hero + Live)
+  const row1 = document.getElementById('dashboardRow1');
+  if (row1) row1.style.display = isDashboardMode ? '' : 'none';
+
+  // Dashboard Row 2 (Intel)
+  const row2 = document.getElementById('dashboardRow2');
+  if (row2) row2.style.display = isDashboardMode ? '' : 'none';
 
   // Main sections
   renderAllSections(filtered);
@@ -715,11 +718,9 @@ function fullRender() {
   renderSidebarCategories();
   renderSidebarSources();
 
-  // Right panel
+  // Widgets
   renderLiveFeed();
   renderConflictWatch();
-  renderTrending();
-  renderSourceBreakdown();
 
   // Header + ticker
   updateHeaderStats();

@@ -114,33 +114,98 @@
   <!-- ─── MAIN CONTENT ──────────────────────────── -->
   <main class="main-content" id="mainContent">
 
-    <!-- Top stories / Hero -->
-    <section class="hero-section" id="heroSection">
-      <div class="section-header">
-        <div class="section-title-group">
-          <span class="section-dot red"></span>
-          <h2 class="section-title">Top Stories</h2>
+    <!-- Dashboard Row 1: Hero + Live Feed -->
+    <div class="dashboard-grid" id="dashboardRow1">
+      
+      <!-- Top stories / Hero -->
+      <section class="dg-hero hero-section" id="heroSection">
+        <div class="section-header">
+          <div class="section-title-group">
+            <span class="section-dot red"></span>
+            <h2 class="section-title">Top Stories</h2>
+          </div>
+          <span class="section-updated" id="heroUpdated"></span>
         </div>
-        <span class="section-updated" id="heroUpdated"></span>
-      </div>
-      <div class="hero-grid" id="heroGrid">
-        <!-- Skeleton -->
-        <div class="hero-main skel-card">
-          <div class="skel skel-img-hero"></div>
-          <div class="skel-body">
-            <div class="skel skel-tag"></div>
-            <div class="skel skel-h1"></div>
-            <div class="skel skel-h2"></div>
-            <div class="skel skel-h3"></div>
+        <div class="hero-grid" id="heroGrid">
+          <!-- Skeleton -->
+          <div class="hero-main skel-card">
+            <div class="skel skel-img-hero"></div>
+            <div class="skel-body">
+              <div class="skel skel-tag"></div>
+              <div class="skel skel-h1"></div>
+              <div class="skel skel-h2"></div>
+              <div class="skel skel-h3"></div>
+            </div>
+          </div>
+          <div class="hero-side">
+            <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
+            <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
+            <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
           </div>
         </div>
-        <div class="hero-side">
-          <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
-          <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
-          <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
+      </section>
+
+      <!-- Live feed Widget -->
+      <div class="dg-live panel-block" id="liveWidget">
+        <div class="panel-header">
+          <span class="live-dot sm"></span>
+          <span class="panel-title">Live Updates</span>
+        </div>
+        <ul class="live-feed-list" id="liveFeedList">
+          <li class="feed-item-skel"><div class="skel" style="height:12px;width:80%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
+          <li class="feed-item-skel"><div class="skel" style="height:12px;width:90%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:40%"></div></li>
+          <li class="feed-item-skel"><div class="skel" style="height:12px;width:75%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:55%"></div></li>
+          <li class="feed-item-skel"><div class="skel" style="height:12px;width:85%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:45%"></div></li>
+          <li class="feed-item-skel"><div class="skel" style="height:12px;width:70%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Dashboard Row 2: Intellectual Widgets -->
+    <div class="dashboard-grid" id="dashboardRow2">
+
+      <!-- Market Hub Widget -->
+      <div class="dg-markets panel-block market-hub">
+        <div class="panel-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span class="panel-title">Economic Indicators</span>
+        </div>
+        <div class="market-widget" id="marketWidget">
+          <div class="skel" style="height:115px; width:100%"></div>
         </div>
       </div>
-    </section>
+
+      <!-- Conflict Watch Widget -->
+      <div class="dg-conflict panel-block conflict-watch">
+        <div class="panel-header conflict-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          <span class="panel-title">Af-Pak Conflict Watch</span>
+        </div>
+        <div class="conflict-tabs">
+          <button class="conflict-tab active" data-target="conflictReports">Latest Reports</button>
+          <button class="conflict-tab" data-target="conflictSocial">Intel (X)</button>
+        </div>
+        <div class="conflict-content">
+          <ul class="live-feed-list" id="conflictReports">
+            <li class="feed-item-skel"><div class="skel" style="height:12px;width:80%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
+            <li class="feed-item-skel"><div class="skel" style="height:12px;width:90%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:40%"></div></li>
+          </ul>
+          <div id="conflictSocial" style="display:none">
+            <div class="social-placeholder">
+              <p>Loading Intelligence Feed...</p>
+              <a class="twitter-timeline" data-height="400" data-theme="light" href="https://twitter.com/KhorasanDiary?ref_src=twsrc%5Etfw">Tweets by KhorasanDiary</a> 
+              <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
 
     <!-- Dynamic category sections injected here -->
     <div id="categorySections"></div>
@@ -153,89 +218,6 @@
     </div>
 
   </main>
-
-  <!-- ─── RIGHT PANEL ───────────────────────────── -->
-  <aside class="right-panel" id="rightPanel">
-    
-    <!-- Market Hub Widget -->
-    <div class="panel-block market-hub">
-      <div class="panel-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-        <span class="panel-title">Economic Indicators</span>
-      </div>
-      <div class="market-widget" id="marketWidget">
-        <div class="skel" style="height:100px; width:100%"></div>
-      </div>
-    </div>
-
-    <!-- Live feed -->
-    <div class="panel-block">
-      <div class="panel-header">
-        <span class="live-dot sm"></span>
-        <span class="panel-title">Live Updates</span>
-      </div>
-      <ul class="live-feed-list" id="liveFeedList">
-        <li class="feed-item-skel"><div class="skel" style="height:12px;width:80%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
-        <li class="feed-item-skel"><div class="skel" style="height:12px;width:90%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:40%"></div></li>
-        <li class="feed-item-skel"><div class="skel" style="height:12px;width:75%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:55%"></div></li>
-      </ul>
-    </div>
-
-    <!-- Conflict Watch Widget -->
-    <div class="panel-block conflict-watch">
-      <div class="panel-header conflict-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
-        <span class="panel-title">Af-Pak Conflict Watch</span>
-      </div>
-      <div class="conflict-tabs">
-        <button class="conflict-tab active" data-target="conflictReports">Latest Reports</button>
-        <button class="conflict-tab" data-target="conflictSocial">Intel (X)</button>
-      </div>
-      <div class="conflict-content">
-        <ul class="live-feed-list" id="conflictReports">
-          <li class="feed-item-skel"><div class="skel" style="height:12px;width:80%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
-        </ul>
-        <div id="conflictSocial" style="display:none">
-          <div class="social-placeholder">
-            <p>Loading Intelligence Feed...</p>
-            <a class="twitter-timeline" data-height="400" data-theme="light" href="https://twitter.com/KhorasanDiary?ref_src=twsrc%5Etfw">Tweets by KhorasanDiary</a> 
-            <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Trending by category -->
-    <div class="panel-block">
-      <div class="panel-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-        <span class="panel-title">Trending Topics</span>
-      </div>
-      <ul class="trending-list" id="trendingList">
-        <li class="trend-skel"><div class="skel" style="height:10px;width:60%"></div></li>
-        <li class="trend-skel"><div class="skel" style="height:10px;width:75%"></div></li>
-        <li class="trend-skel"><div class="skel" style="height:10px;width:50%"></div></li>
-        <li class="trend-skel"><div class="skel" style="height:10px;width:80%"></div></li>
-        <li class="trend-skel"><div class="skel" style="height:10px;width:55%"></div></li>
-      </ul>
-    </div>
-
-    <!-- Source breakdown -->
-    <div class="panel-block">
-      <div class="panel-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        <span class="panel-title">Sources Active</span>
-      </div>
-      <ul class="source-breakdown" id="sourceBreakdown">
-        <!-- Injected -->
-      </ul>
-    </div>
-
-  </aside>
 
 </div><!-- /app-shell -->
 
