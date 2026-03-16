@@ -592,7 +592,7 @@ ul, ol { list-style: none; }
 ══════════════════════════════════════════════════════════ */
 .main-content {
   min-width: 0;
-  padding: 24px 20px 48px;
+  padding: 16px 16px 40px;
   background: var(--bg);
 }
 
@@ -601,9 +601,9 @@ ul, ol { list-style: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--teal);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--teal-mid);
 }
 
 .section-title-group {
@@ -655,9 +655,9 @@ ul, ol { list-style: none; }
 
 .hero-grid {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 320px;
   grid-template-rows: auto;
-  gap: 12px;
+  gap: 16px;
 }
 
 /* Hero main card */
@@ -679,7 +679,7 @@ ul, ol { list-style: none; }
 
 .hero-main .card-image {
   width: 100%;
-  height: 300px;
+  height: 240px;
   object-fit: cover;
   display: block;
 }
@@ -698,16 +698,16 @@ ul, ol { list-style: none; }
 }
 
 .hero-main .card-body {
-  padding: 18px 20px 16px;
+  padding: 14px 16px 12px;
 }
 
 .hero-main .card-headline {
   font-family: var(--font-serif);
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.2;
   color: var(--teal);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   letter-spacing: -0.02em;
 }
 
@@ -738,36 +738,37 @@ ul, ol { list-style: none; }
 }
 
 .side-card {
-  flex: 1;
-  border-radius: var(--radius-lg);
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  border-radius: var(--radius);
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
-  display: block;
-  transition: box-shadow var(--transition), transform var(--transition);
+  transition: all var(--transition);
+  height: 100px;
 }
 
 .side-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  border-color: var(--border-dark);
 }
 
 .side-card .card-image {
-  width: 100%;
-  height: 85px;
+  width: 100px;
+  height: 100px;
   object-fit: cover;
   display: block;
 }
 
 .side-card .card-image-placeholder {
-  width: 100%;
-  height: 85px;
+  width: 100px;
+  height: 100px;
   background: linear-gradient(135deg, var(--teal) 0%, var(--teal-mid) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 900;
   color: rgba(255,255,255,0.2);
 }
@@ -790,7 +791,7 @@ ul, ol { list-style: none; }
 
 /* ── Category sections ──────────────────────────────────── */
 .category-section {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .cards-row {

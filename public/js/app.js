@@ -283,8 +283,8 @@ function cardFooter(article) {
 function buildHeroMain(article) {
   if (!article) return '';
   const img = article.image
-    ? `<img class="card-image" src="${escHtml(article.image)}" alt="" loading="eager" style="height:300px;object-fit:cover;" onerror="this.style.display='none'">`
-    : buildPlaceholder(article.source.name, article.source.color, 300);
+    ? `<img class="card-image" src="${escHtml(article.image)}" alt="" loading="eager" onerror="this.style.display='none'">`
+    : buildPlaceholder(article.source.name, article.source.color, 240);
 
   return `
     <a class="hero-main" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
@@ -302,8 +302,8 @@ function buildHeroMain(article) {
 function buildSideCard(article) {
   if (!article) return '';
   const img = article.image
-    ? `<img class="card-image" src="${escHtml(article.image)}" alt="" loading="lazy" style="height:120px;object-fit:cover;" onerror="this.style.display='none'">`
-    : buildPlaceholder(article.source.name, article.source.color, 120);
+    ? `<img class="card-image" src="${escHtml(article.image)}" alt="" loading="lazy" onerror="this.style.display='none'">`
+    : buildPlaceholder(article.source.name, article.source.color, 100);
 
   return `
     <a class="side-card" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
