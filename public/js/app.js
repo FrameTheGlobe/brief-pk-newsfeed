@@ -558,6 +558,37 @@ function renderLiveFeed() {
     </li>`).join('');
 }
 
+function renderConflictWatch() {
+  const list = document.getElementById('conflictReports');
+  if (!list) return;
+
+  const keywords = ['afghan', 'taliban', 'border', 'ttp', 'conflict', 'security', 'chaman', 'torkham', 'militant', 'insurgent', 'cross-border'];
+  const conflictSources = ['khorasandiary', 'tolonews', 'khaama', 'pajhwok'];
+  
+  const relevant = State.articles.filter(a => {
+    const fromConflictSrc = conflictSources.includes(a.source.id);
+    const titleMatch = keywords.some(k => a.title.toLowerCase().includes(k));
+    const descMatch = a.description && keywords.some(k => a.description.toLowerCase().includes(k));
+    return fromConflictSrc || titleMatch || descMatch;
+  }).slice(0, 10);
+
+  if (!relevant.length) {
+    list.innerHTML = `<li class="feed-item"><div class="feed-title">No recent conflict reports</div></li>`;
+    return;
+  }
+
+  list.innerHTML = relevant.map(a => `
+    <li class="feed-item conflict-item" onclick="window.open('${escHtml(a.link)}','_blank')">
+      <div class="feed-title${a.rtl ? ' rtl' : ''}">${escHtml(a.title)}</div>
+      <div class="feed-meta">
+        <span class="feed-source-dot" style="background:${a.source.color};"></span>
+        <span>${escHtml(a.source.name)}</span>
+        <span>·</span>
+        <span>${timeAgo(a.pubDate)}</span>
+      </div>
+    </li>`).join('');
+}
+
 function renderTrending() {
   const list = document.getElementById('trendingList');
   if (!list || !State.articles.length) return;
@@ -686,6 +717,7 @@ function fullRender() {
 
   // Right panel
   renderLiveFeed();
+  renderConflictWatch();
   renderTrending();
   renderSourceBreakdown();
 
@@ -798,6 +830,19 @@ const App = {
     setInterval(() => App.refresh(false), 5 * 60 * 1000);
     // Auto-refresh market every 15 min
     setInterval(() => fetchMarket(), 15 * 60 * 1000);
+
+    // Initialize Conflict Tabs
+    const conflictTabs = document.querySelectorAll('.conflict-tab');
+    conflictTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.getAttribute('data-target');
+        conflictTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        document.getElementById('conflictReports').style.display = target === 'conflictReports' ? '' : 'none';
+        document.getElementById('conflictSocial').style.display = target === 'conflictSocial' ? '' : 'none';
+      });
+    });
   },
 
   async refresh(force = true) {

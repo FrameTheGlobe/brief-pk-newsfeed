@@ -162,6 +162,63 @@ ul, ol { list-style: none; }
 .m-down { color: #E11D48; font-weight: 800; }
 
 /* ══════════════════════════════════════════════════════════
+   CONFLICT WATCH WIDGET
+══════════════════════════════════════════════════════════ */
+.conflict-watch {
+  border-left: 3px solid var(--red);
+}
+
+.conflict-header {
+  color: var(--red) !important;
+}
+
+.conflict-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.conflict-tab {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.conflict-tab:hover {
+  background: var(--red-dim);
+  color: var(--red);
+}
+
+.conflict-tab.active {
+  background: var(--red);
+  color: #fff;
+}
+
+.conflict-content {
+  min-height: 150px;
+}
+
+.social-placeholder {
+  padding: 20px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.conflict-item .feed-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* ══════════════════════════════════════════════════════════
    HEADER
 ══════════════════════════════════════════════════════════ */
 .site-header {

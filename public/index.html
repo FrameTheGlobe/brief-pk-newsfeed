@@ -180,9 +180,33 @@
         <li class="feed-item-skel"><div class="skel" style="height:12px;width:80%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
         <li class="feed-item-skel"><div class="skel" style="height:12px;width:90%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:40%"></div></li>
         <li class="feed-item-skel"><div class="skel" style="height:12px;width:75%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:55%"></div></li>
-        <li class="feed-item-skel"><div class="skel" style="height:12px;width:85%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:45%"></div></li>
-        <li class="feed-item-skel"><div class="skel" style="height:12px;width:70%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
       </ul>
+    </div>
+
+    <!-- Conflict Watch Widget -->
+    <div class="panel-block conflict-watch">
+      <div class="panel-header conflict-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span class="panel-title">Af-Pak Conflict Watch</span>
+      </div>
+      <div class="conflict-tabs">
+        <button class="conflict-tab active" data-target="conflictReports">Latest Reports</button>
+        <button class="conflict-tab" data-target="conflictSocial">Intel (X)</button>
+      </div>
+      <div class="conflict-content">
+        <ul class="live-feed-list" id="conflictReports">
+          <li class="feed-item-skel"><div class="skel" style="height:12px;width:80%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
+        </ul>
+        <div id="conflictSocial" style="display:none">
+          <div class="social-placeholder">
+            <p>Loading Intelligence Feed...</p>
+            <a class="twitter-timeline" data-height="400" data-theme="light" href="https://twitter.com/KhorasanDiary?ref_src=twsrc%5Etfw">Tweets by KhorasanDiary</a> 
+            <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Trending by category -->
