@@ -26,9 +26,9 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ── RSS parser instance ──────────────────────────────────────────────
 const parser = new Parser({
-  timeout: 4000,  // 4s per source — 47 parallel fetches need headroom under Vercel's 10s limit
+  timeout: 8000,  // Increased to 8s for local stability
   headers: {
-    'User-Agent': 'brief.pk Newsfeed/1.0 (+https://brief.pk)',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) brief.pk/1.0',
     'Accept':     'application/rss+xml, application/xml, text/xml, */*',
   },
   customFields: {
@@ -110,9 +110,8 @@ async function fetchSource(source) {
     const feed  = await parser.parseURL(source.url);
     const items = (feed.items || []).slice(0, 25);
 
-    return items
+    const posts = items
       .filter(item => {
-        // For international feeds, only keep Pakistan-relevant articles
         if (source.pakistanFilter) {
           return isPakistanRelevant(item.title, item.contentSnippet || item.summary);
         }
@@ -135,8 +134,11 @@ async function fetchSource(source) {
         category: detectCategory(item.title, item.contentSnippet || item.summary),
         rtl:      isRtl(item.title || ''),
       }));
+    
+    console.log(`[feeds] ✅ Loaded ${posts.length} from ${source.name}`);
+    return posts;
   } catch (err) {
-    console.warn(`[feeds] Failed to fetch ${source.name}: ${err.message}`);
+    console.error(`[feeds] ❌ Failed ${source.name}: ${err.message}`);
     return [];
   }
 }
@@ -163,6 +165,7 @@ async function fetchAll() {
     return true;
   });
 
+  console.log(`[feeds] 📊 Total: ${articles.length} articles from ${settled.filter(s => s.status === 'fulfilled' && s.value.length > 0).length} sources`);
   return articles;
 }
 
