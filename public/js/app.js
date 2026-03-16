@@ -730,54 +730,45 @@ function changeArrow(change) {
 }
 
 function renderMarket(m) {
-  // USD/PKR
-  const usd = document.getElementById('m-usd');
-  if (usd) {
-    usd.innerHTML = m.usd.val != null
-      ? `${Number(m.usd.val).toFixed(2)}${changeArrow(m.usd.change)}`
+  const container = document.getElementById('marketWidget');
+  if (!container) return;
+
+  const buildItem = (label, val, change, isCurrency = false) => {
+    const arrow = changeArrow(change);
+    const value = val != null 
+      ? (isCurrency ? Number(val).toFixed(2) : Math.round(val).toLocaleString('en-PK')) 
       : '—';
-  }
+    return `
+      <div class="mw-item">
+        <span class="mw-label">${label}</span>
+        <span class="mw-value">Rs. ${value}${arrow}</span>
+      </div>`;
+  };
 
-  // KSE-100
-  const kse = document.getElementById('m-kse');
-  if (kse) {
-    kse.innerHTML = m.kse.val != null
-      ? `${Math.round(m.kse.val).toLocaleString('en-PK')}${changeArrow(m.kse.change)}`
-      : '—';
-  }
-
-  // Gold (PKR/tola)
-  const gold = document.getElementById('m-gold');
-  if (gold) {
-    gold.textContent = m.gold.val != null
-      ? `Rs. ${Number(m.gold.val).toLocaleString('en-PK')}`
-      : '—';
-  }
-
-  const petrol = document.getElementById('m-petrol');
-  if (petrol) petrol.textContent = pkrFmt(m.petrol?.val);
-
-  const diesel = document.getElementById('m-diesel');
-  if (diesel) diesel.textContent = pkrFmt(m.diesel?.val);
-
-  const elec = document.getElementById('m-elec');
-  if (elec) elec.textContent = pkrFmt(m.electricity?.val, 2);
-
-  const lpg = document.getElementById('m-lpg');
-  if (lpg) lpg.textContent = pkrFmt(m.lpg?.val);
-
-  const atta = document.getElementById('m-atta');
-  if (atta) atta.textContent = pkrFmt(m.atta?.val);
-
-  const sugar = document.getElementById('m-sugar');
-  if (sugar) sugar.textContent = pkrFmt(m.sugar?.val);
-
-  const rice = document.getElementById('m-rice');
-  if (rice) rice.textContent = pkrFmt(m.rice?.val);
-
-  // Chicken (optional — element may not exist on older HTML)
-  const chicken = document.getElementById('m-chicken');
-  if (chicken) chicken.textContent = pkrFmt(m.chicken?.val);
+  container.innerHTML = `
+    <div class="mw-group">
+      <div class="mw-group-label">Forex & Equity</div>
+      ${buildItem('USD/PKR', m.usd.val, m.usd.change, true)}
+      ${buildItem('KSE-100', m.kse.val, m.kse.change)}
+      ${buildItem('Gold (Tola)', m.gold.val)}
+    </div>
+    
+    <div class="mw-group">
+      <div class="mw-group-label">Energy</div>
+      ${buildItem('Petrol', m.petrol.val)}
+      ${buildItem('Diesel', m.diesel.val)}
+      ${buildItem('Electricity', m.electricity.val)}
+      ${buildItem('LPG (KG)', m.lpg.val)}
+    </div>
+    
+    <div class="mw-group">
+      <div class="mw-group-label">Essentials</div>
+      ${buildItem('Atta (10kg)', m.atta.val)}
+      ${buildItem('Sugar (KG)', m.sugar.val)}
+      ${buildItem('Rice (KG)', m.rice.val)}
+      ${buildItem('Chicken (KG)', m.chicken.val)}
+    </div>
+  `;
 }
 
 /* ═══════════════════════════════════════════════

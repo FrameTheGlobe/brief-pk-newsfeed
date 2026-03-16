@@ -25,78 +25,6 @@
 <!-- ═══════════════════════════════════════════════
      HEADER
 ═══════════════════════════════════════════════ -->
-<!-- ═══════════════════════════════════════════════
-     MARKET TICKER
-═══════════════════════════════════════════════ -->
-<div class="market-bar" id="marketBar">
-  <div class="market-track" id="marketTrack">
-    <!-- USD/PKR -->
-    <div class="market-item">
-      <span class="m-label">USD/PKR</span>
-      <span class="m-value" id="m-usd">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Gold -->
-    <div class="market-item">
-      <span class="m-label">Gold (24K)</span>
-      <span class="m-value" id="m-gold">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Petrol -->
-    <div class="market-item">
-      <span class="m-label">Petrol</span>
-      <span class="m-value" id="m-petrol">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Diesel -->
-    <div class="market-item">
-      <span class="m-label">Diesel</span>
-      <span class="m-value" id="m-diesel">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Electricity -->
-    <div class="market-item">
-      <span class="m-label">Elec (Unit)</span>
-      <span class="m-value" id="m-elec">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- LPG -->
-    <div class="market-item">
-      <span class="m-label">LPG (KG)</span>
-      <span class="m-value" id="m-lpg">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Atta -->
-    <div class="market-item">
-      <span class="m-label">Atta (10kg)</span>
-      <span class="m-value" id="m-atta">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Sugar -->
-    <div class="market-item">
-      <span class="m-label">Sugar</span>
-      <span class="m-value" id="m-sugar">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Rice -->
-    <div class="market-item">
-      <span class="m-label">Rice (Basmati)</span>
-      <span class="m-value" id="m-rice">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- Chicken -->
-    <div class="market-item">
-      <span class="m-label">Chicken</span>
-      <span class="m-value" id="m-chicken">—</span>
-    </div>
-    <span class="m-sep">|</span>
-    <!-- KSE 100 -->
-    <div class="market-item">
-      <span class="m-label">KSE-100</span>
-      <span class="m-value" id="m-kse">—</span>
-    </div>
-  </div>
-</div>
 
 <header class="site-header" id="siteHeader">
   <div class="header-left">
@@ -228,6 +156,19 @@
 
   <!-- ─── RIGHT PANEL ───────────────────────────── -->
   <aside class="right-panel" id="rightPanel">
+    
+    <!-- Market Hub Widget -->
+    <div class="panel-block market-hub">
+      <div class="panel-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <span class="panel-title">Economic Indicators</span>
+      </div>
+      <div class="market-widget" id="marketWidget">
+        <div class="skel" style="height:100px; width:100%"></div>
+      </div>
+    </div>
 
     <!-- Live feed -->
     <div class="panel-block">

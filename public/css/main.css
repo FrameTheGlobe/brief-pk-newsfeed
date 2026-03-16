@@ -39,7 +39,7 @@
   --radius-xl:    16px;
 
   --header-h:     56px;
-  --market-h:     32px;
+  --market-h:     0px;
   --ticker-h:     34px;
   --sidebar-w:    230px;
   --right-w:      270px;
@@ -114,49 +114,52 @@ ul, ol { list-style: none; }
 .trend-skel     { padding: 8px 0; }
 
 /* ══════════════════════════════════════════════════════════
-   MARKET BAR
+   MARKET HUB WIDGET (Right Panel)
 ══════════════════════════════════════════════════════════ */
-.market-bar {
-  height: var(--market-h);
-  background: var(--teal);
-  color: #fff;
+.market-widget {
+  padding: 4px 12px 14px;
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  padding: 0 16px;
-  font-size: 10px;
-  font-weight: 700;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  z-index: 210;
-  position: relative;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  scrollbar-width: none;
-}
-.market-bar::-webkit-scrollbar { display: none; }
-
-.market-track {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 16px;
-  height: 100%;
 }
 
-.market-item {
+.mw-group {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.m-label { color: #888; text-transform: uppercase; font-size: 9px; letter-spacing: 0.05em; }
-.m-value { color: #fff; font-variant-numeric: tabular-nums; }
-.m-sep { color: #333; font-weight: 300; }
+.mw-group-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-3);
+  letter-spacing: 0.1em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
 
-.m-up { color: #2ecc71; }
-.m-down { color: #e74c3c; }
+.mw-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.mw-label {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.mw-value {
+  color: var(--text-1);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.m-up { color: #15803D; font-weight: 800; }
+.m-down { color: #E11D48; font-weight: 800; }
 
 /* ══════════════════════════════════════════════════════════
    HEADER
