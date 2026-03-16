@@ -154,7 +154,13 @@ async function fetchArticles(force = false) {
   }
 
   try {
-    const res  = await fetch(API_URL);
+    const url = new URL(API_URL, window.location.origin);
+    if (force) {
+      url.searchParams.set('force', '1');
+      url.searchParams.set('_t', Date.now()); // Hard cache buster
+    }
+
+    const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('Invalid response');
@@ -915,6 +921,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     State.activeLang = btn.dataset.lang;
     fullRender();
+  });
+
+  // Refresh
+  document.getElementById('refreshBtn')?.addEventListener('click', () => {
+    App.refresh();
   });
 
   // Sidebar toggle (mobile)

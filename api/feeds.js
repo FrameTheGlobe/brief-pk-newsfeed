@@ -28,7 +28,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const parser = new Parser({
   timeout: 8000,  // Increased to 8s for local stability
   headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) brief.pk/1.0',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'Accept':     'application/rss+xml, application/xml, text/xml, */*',
   },
   customFields: {
@@ -182,8 +182,8 @@ module.exports = async function handler(req, res) {
     return res.status(204).end();
   }
 
-  // Serve from warm cache if available
-  if (_cache && Date.now() - _cacheTs < CACHE_TTL) {
+  // Serve from warm cache if available (unless force requested)
+  if (!req.query.force && _cache && Date.now() - _cacheTs < CACHE_TTL) {
     return res.status(200).json(applyFilters(_cache, req.query));
   }
 
