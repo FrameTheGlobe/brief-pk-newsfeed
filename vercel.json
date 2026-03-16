@@ -1,7 +1,11 @@
 {
   "version": 2,
-  "installCommand": "npm install",
-  "outputDirectory": "public",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/public/$1" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

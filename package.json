@@ -1,6 +1,6 @@
 {
   "name": "brief-pk-newsfeed",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "brief.pk — Pakistan Newsfeed Dashboard",
   "private": true,
   "engines": {
@@ -8,7 +8,6 @@
   },
   "scripts": {
     "dev": "node server.js",
-    "build": "echo 'Static build — no compilation needed'",
     "start": "node server.js"
   },
   "dependencies": {
