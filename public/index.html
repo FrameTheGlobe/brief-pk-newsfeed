@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="brief.pk — Pakistan Newsfeed. Live aggregator covering politics, economy, geopolitics, foreign policy, security and society.">
+  <meta name="theme-color" content="#1B3A4B">
+  <title>brief. | Pakistan Newsfeed</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════ -->
+<header class="site-header" id="siteHeader">
+  <div class="header-left">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+    <a href="https://brief.pk" target="_blank" rel="noopener" class="logo">
+      brief<span class="logo-dot">.</span><span class="logo-pk">pk</span>
+    </a>
+    <div class="header-divider"></div>
+    <span class="header-subtitle">Pakistan Newsfeed</span>
+  </div>
+
+  <div class="header-center">
+    <div class="live-indicator">
+      <span class="live-dot"></span>
+      <span>LIVE</span>
+    </div>
+    <span class="stat-pill" id="headerStatCount">—</span>
+    <span class="stat-label">stories</span>
+    <span class="stat-sep">·</span>
+    <span class="stat-pill" id="headerStatSources">—</span>
+    <span class="stat-label">sources</span>
+  </div>
+
+  <div class="header-right">
+    <div class="search-bar">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search Pakistan news…" autocomplete="off">
+      <button class="search-clear" id="searchClear" style="display:none" aria-label="Clear">✕</button>
+    </div>
+
+    <button class="btn-refresh" id="refreshBtn" onclick="App.refresh()">
+      <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      <span>Refresh</span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════
+     BREAKING TICKER
+═══════════════════════════════════════════════ -->
+<div class="ticker-bar" id="tickerBar">
+  <div class="ticker-badge">LATEST</div>
+  <div class="ticker-viewport">
+    <div class="ticker-track" id="tickerTrack">
+      <span class="ticker-placeholder">Fetching Pakistan news — please wait…</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     APP SHELL  (sidebar + main + right panel)
+═══════════════════════════════════════════════ -->
+<div class="app-shell" id="appShell">
+
+  <!-- ─── LEFT SIDEBAR ─────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <nav class="sidebar-nav">
+
+      <div class="nav-section">
+        <div class="nav-section-label">Browse</div>
+        <ul class="nav-list" id="catNavList">
+          <!-- Injected by JS -->
+        </ul>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Sources</div>
+        <ul class="sources-list" id="sourceNavList">
+          <!-- Injected by JS -->
+        </ul>
+      </div>
+
+    </nav>
+  </aside>
+
+  <!-- ─── MAIN CONTENT ──────────────────────────── -->
+  <main class="main-content" id="mainContent">
+
+    <!-- Top stories / Hero -->
+    <section class="hero-section" id="heroSection">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-dot red"></span>
+          <h2 class="section-title">Top Stories</h2>
+        </div>
+        <span class="section-updated" id="heroUpdated"></span>
+      </div>
+      <div class="hero-grid" id="heroGrid">
+        <!-- Skeleton -->
+        <div class="hero-main skel-card">
+          <div class="skel skel-img-hero"></div>
+          <div class="skel-body">
+            <div class="skel skel-tag"></div>
+            <div class="skel skel-h1"></div>
+            <div class="skel skel-h2"></div>
+            <div class="skel skel-h3"></div>
+          </div>
+        </div>
+        <div class="hero-side">
+          <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
+          <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dynamic category sections injected here -->
+    <div id="categorySections"></div>
+
+    <!-- Load more -->
+    <div class="load-more-row" id="loadMoreRow" style="display:none">
+      <button class="btn-load-more" id="loadMoreBtn" onclick="App.loadMoreSection()">
+        Load more stories
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ─── RIGHT PANEL ───────────────────────────── -->
+  <aside class="right-panel" id="rightPanel">
+
+    <!-- Live feed -->
+    <div class="panel-block">
+      <div class="panel-header">
+        <span class="live-dot sm"></span>
+        <span class="panel-title">Live Updates</span>
+      </div>
+      <ul class="live-feed-list" id="liveFeedList">
+        <li class="feed-item-skel"><div class="skel" style="height:12px;width:80%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
+        <li class="feed-item-skel"><div class="skel" style="height:12px;width:90%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:40%"></div></li>
+        <li class="feed-item-skel"><div class="skel" style="height:12px;width:75%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:55%"></div></li>
+        <li class="feed-item-skel"><div class="skel" style="height:12px;width:85%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:45%"></div></li>
+        <li class="feed-item-skel"><div class="skel" style="height:12px;width:70%;margin-bottom:4px"></div><div class="skel" style="height:10px;width:50%"></div></li>
+      </ul>
+    </div>
+
+    <!-- Trending by category -->
+    <div class="panel-block">
+      <div class="panel-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        <span class="panel-title">Trending Topics</span>
+      </div>
+      <ul class="trending-list" id="trendingList">
+        <li class="trend-skel"><div class="skel" style="height:10px;width:60%"></div></li>
+        <li class="trend-skel"><div class="skel" style="height:10px;width:75%"></div></li>
+        <li class="trend-skel"><div class="skel" style="height:10px;width:50%"></div></li>
+        <li class="trend-skel"><div class="skel" style="height:10px;width:80%"></div></li>
+        <li class="trend-skel"><div class="skel" style="height:10px;width:55%"></div></li>
+      </ul>
+    </div>
+
+    <!-- Source breakdown -->
+    <div class="panel-block">
+      <div class="panel-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span class="panel-title">Sources Active</span>
+      </div>
+      <ul class="source-breakdown" id="sourceBreakdown">
+        <!-- Injected -->
+      </ul>
+    </div>
+
+  </aside>
+
+</div><!-- /app-shell -->
+
+<!-- ═══════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-logo">brief<span class="logo-dot">.</span><span class="logo-pk">pk</span></div>
+    <p class="footer-tagline">"Voice of Pakistan" — Independent Pakistan news aggregator</p>
+    <p class="footer-sources" id="footerSourcesList"></p>
+  </div>
+</footer>
+
+<!-- Scroll-to-top -->
+<button class="fab" id="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
+
+<!-- App script -->
+<script src="/js/app.js"></script>
+</body>
+</html>

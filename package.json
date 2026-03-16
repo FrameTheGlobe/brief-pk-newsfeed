@@ -1,0 +1,20 @@
+{
+  "name": "brief-pk-newsfeed",
+  "version": "1.0.0",
+  "description": "brief.pk — Pakistan Newsfeed Dashboard",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static build — no compilation needed'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}

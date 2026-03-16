@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "buildCommand": "echo 'No build step'",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/feeds", "destination": "/api/feeds" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin",  "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
+        { "key": "Cache-Control",                "value": "s-maxage=300, stale-while-revalidate=60" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options",        "value": "SAMEORIGIN" }
+      ]
+    }
+  ]
+}
