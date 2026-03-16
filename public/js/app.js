@@ -67,7 +67,7 @@ const CAT_ICONS = {
 const State = {
   articles:       [],       // all fetched articles
   activeCategory: 'All',   // current category filter
-  activeLang:     'all',   // 'all' | 'en' | 'ur'
+  activeLang:     'en',   // 'all' | 'en' | 'ur'
   activeSources:  null,     // Set of source ids (null = all active)
   searchQuery:    '',
   lastFetch:      0,
