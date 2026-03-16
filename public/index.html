@@ -121,24 +121,27 @@
       <section class="dg-hero panel-block hero-dashboard-card" id="heroSection">
         <div class="panel-header">
           <span class="live-dot sm" style="background:var(--red)"></span>
-          <span class="panel-title">Top Stories</span>
+          <span class="panel-title" id="lblHeroTitle">Top Stories</span>
           <span class="section-updated" id="heroUpdated" style="margin-left:auto; font-size:10px; color:var(--text-3)"></span>
         </div>
-        <div class="hero-grid-wrapper" style="padding: 20px;">
+        <div class="hero-grid-wrapper">
           <div class="hero-grid" id="heroGrid">
             <!-- Skeleton -->
             <div class="hero-main skel-card">
               <div class="skel skel-img-hero"></div>
               <div class="skel-body">
-                <div class="skel skel-tag"></div>
+                <div class="skel-tag-group" style="display:flex;gap:4px;margin-bottom:8px">
+                  <div class="skel skel-tag"></div>
+                  <div class="skel skel-tag"></div>
+                </div>
                 <div class="skel skel-h1"></div>
                 <div class="skel skel-h2"></div>
               </div>
             </div>
             <div class="hero-side">
-              <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div></div></div>
-              <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div></div></div>
-              <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div></div></div>
+              <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1" style="width:90%"></div></div></div>
+              <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1" style="width:85%"></div></div></div>
+              <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1" style="width:95%"></div></div></div>
             </div>
           </div>
         </div>

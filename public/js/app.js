@@ -543,8 +543,12 @@ function renderLiveFeed() {
   const list = document.getElementById('liveFeedList');
   if (!list) return;
 
-  const recent = State.articles.slice(0, 15);
-  if (!recent.length) return;
+  const arts = getFiltered(); // Respect active language/category
+  const recent = arts.slice(0, 15);
+  if (!recent.length) {
+    list.innerHTML = `<li class="feed-item"><div class="feed-title">No recent updates</div></li>`;
+    return;
+  }
 
   list.innerHTML = recent.map(a => `
     <li class="feed-item" onclick="window.open('${escHtml(a.link)}','_blank')">
@@ -562,18 +566,27 @@ function renderConflictWatch() {
   const list = document.getElementById('conflictReports');
   if (!list) return;
 
-  const keywords = ['afghan', 'taliban', 'border', 'ttp', 'conflict', 'security', 'chaman', 'torkham', 'militant', 'insurgent', 'cross-border'];
+  const keywordsEn = ['afghan', 'taliban', 'border', 'ttp', 'conflict', 'security', 'chaman', 'torkham', 'militant', 'insurgent', 'cross-border'];
+  const keywordsUr = ['افغان', 'طالبان', 'سرحد', 'ٹی ٹی پی', 'سیکیورٹی', 'چمن', 'تورخم', 'عسکریت پسند', 'شورش', 'دھماکہ'];
+  
   const conflictSources = ['khorasandiary', 'tolonews', 'khaama', 'pajhwok'];
   
-  const relevant = State.articles.filter(a => {
+  const arts = getFiltered(); // Respect active language
+  const relevant = arts.filter(a => {
     const fromConflictSrc = conflictSources.includes(a.source.id);
-    const titleMatch = keywords.some(k => a.title.toLowerCase().includes(k));
-    const descMatch = a.description && keywords.some(k => a.description.toLowerCase().includes(k));
-    return fromConflictSrc || titleMatch || descMatch;
-  }).slice(0, 10);
+    const title = (a.title || '').toLowerCase();
+    const desc = (a.description || '').toLowerCase();
+    
+    const engMatch = keywordsEn.some(k => title.includes(k) || desc.includes(k));
+    const urMatch  = keywordsUr.some(k => title.includes(k) || desc.includes(k));
+    
+    return fromConflictSrc || engMatch || urMatch;
+  }).slice(0, 12);
+
+  const emptyMsg = State.activeLang === 'ur' ? 'تنازعہ کی کوئی خبر دستیاب نہیں ہے' : 'No recent conflict reports';
 
   if (!relevant.length) {
-    list.innerHTML = `<li class="feed-item"><div class="feed-title">No recent conflict reports</div></li>`;
+    list.innerHTML = `<li class="feed-item"><div class="feed-title">${emptyMsg}</div></li>`;
     return;
   }
 
@@ -647,9 +660,12 @@ function renderSourceBreakdown() {
 
 function renderTicker(articles) {
   const track = document.getElementById('tickerTrack');
-  if (!track || !articles.length) return;
+  if (!track) return;
 
-  const items = articles
+  const arts = articles || getFiltered();
+  if (!arts.length) return;
+
+  const items = arts
     .slice(0, 30)
     .map(a => `
       <span class="ticker-item" onclick="window.open('${escHtml(a.link)}','_blank')">
@@ -670,9 +686,20 @@ function updateHeaderStats() {
   if (!count || !sources) return;
 
   count.textContent   = State.articles.length;
-
   const uniqueSources = new Set(State.articles.map(a => a.source.id)).size;
   sources.textContent = uniqueSources;
+
+  // Translation
+  const ui = {
+    lblStories: State.activeLang === 'ur' ? 'خبریں' : 'stories',
+    lblSources: State.activeLang === 'ur' ? 'ذرائع' : 'sources',
+    lblHeroTitle: State.activeLang === 'ur' ? 'اہم خبریں' : 'Top Stories',
+  };
+  
+  for (const id in ui) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = ui[id];
+  }
 }
 
 /* ═══════════════════════════════════════════════
@@ -778,30 +805,49 @@ function renderMarket(m) {
       </div>`;
   };
 
+  const trans = {
+    'Forex & Equity': 'فاریکس اور ایکویٹی',
+    'Energy': 'توانائی',
+    'Essentials': 'ضروریات زندگی',
+    'USD/PKR': 'ڈالر/روپیہ',
+    'KSE-100': 'کے ایس ای 100',
+    'Gold (Tola)': 'سونا (فی تولہ)',
+    'Petrol': 'پیٹرول',
+    'Diesel': 'ڈیزل',
+    'Electricity': 'بجلی',
+    'LPG (KG)': 'ایل پی جی (کلو)',
+    'Atta (10kg)': 'آٹا (10 کلو)',
+    'Sugar (KG)': 'چینی (کلو)',
+    'Rice (KG)': 'چاول (کلو)',
+    'Chicken (KG)': 'مرغی (کلو)'
+  };
+
+  const getLabel = (l) => State.activeLang === 'ur' ? (trans[l] || l) : l;
+
   container.innerHTML = `
     <div class="mw-group-grid">
       <div class="mw-group">
-        <div class="mw-group-label">Forex & Equity</div>
-        ${buildItem('USD/PKR', m.usd.val, m.usd.change, true)}
-        ${buildItem('KSE-100', m.kse.val, m.kse.change)}
-        ${buildItem('Gold (Tola)', m.gold.val)}
+        <div class="mw-group-label">${getLabel('Forex & Equity')}</div>
+        ${buildItem(getLabel('USD/PKR'), m.usd.val, m.usd.change, true)}
+        ${buildItem(getLabel('KSE-100'), m.kse.val, m.kse.change)}
+        ${buildItem(getLabel('Gold (Tola)'), m.gold.val)}
       </div>
       
       <div class="mw-group">
-        <div class="mw-group-label">Energy</div>
-        ${buildItem('Petrol', m.petrol.val)}
-        ${buildItem('Diesel', m.diesel.val)}
-        ${buildItem('Electricity', m.electricity.val)}
-        ${buildItem('LPG (KG)', m.lpg.val)}
+        <div class="mw-group-label">${getLabel('Energy')}</div>
+        ${buildItem(getLabel('Petrol'), m.petrol.val)}
+        ${buildItem(getLabel('Diesel'), m.diesel.val)}
+        ${buildItem(getLabel('Electricity'), m.electricity.val)}
+        ${buildItem(getLabel('LPG (KG)'), m.lpg.val)}
       </div>
       
       <div class="mw-group" style="grid-column: span 2">
-        <div class="mw-group-label">Essentials</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px;">
-          ${buildItem('Atta (10kg)', m.atta.val)}
-          ${buildItem('Sugar (KG)', m.sugar.val)}
-          ${buildItem('Rice (KG)', m.rice.val)}
-          ${buildItem('Chicken (KG)', m.chicken.val)}
+        <div class="mw-group-label">${getLabel('Essentials')}</div>
+        <div class="mw-essentials-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px;">
+          ${buildItem(getLabel('Atta (10kg)'), m.atta.val)}
+          ${buildItem(getLabel('Sugar (KG)'), m.sugar.val)}
+          ${buildItem(getLabel('Rice (KG)'), m.rice.val)}
+          ${buildItem(getLabel('Chicken (KG)'), m.chicken.val)}
         </div>
       </div>
     </div>

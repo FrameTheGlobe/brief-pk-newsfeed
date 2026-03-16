@@ -117,16 +117,22 @@ ul, ol { list-style: none; }
    MARKET HUB WIDGET (Right Panel)
 ══════════════════════════════════════════════════════════ */
 .market-widget {
-  padding: 20px;
+  padding: 12px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .mw-group-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px 40px;
+  gap: 16px 32px;
+}
+
+.mw-essentials-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 40px;
 }
 
 .mw-group {
@@ -180,8 +186,8 @@ ul, ol { list-style: none; }
 
 .conflict-tabs {
   display: flex;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 6px 16px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -189,10 +195,10 @@ ul, ol { list-style: none; }
 .conflict-tab {
   background: none;
   border: none;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text-3);
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
   transition: all var(--transition);
@@ -655,7 +661,7 @@ ul, ol { list-style: none; }
 ══════════════════════════════════════════════════════════ */
 .main-content {
   min-width: 0;
-  padding: 32px 40px 60px;
+  padding: 20px 24px 60px;
   background: var(--bg);
 }
 
@@ -714,6 +720,11 @@ ul, ol { list-style: none; }
 /* ── Hero section ───────────────────────────────────────── */
 .hero-section {
   margin-bottom: 0;
+}
+
+.hero-grid-wrapper {
+  padding: 16px;
+  background: var(--surface);
 }
 
 .hero-grid {
@@ -947,8 +958,8 @@ ul, ol { list-style: none; }
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 24px;
-  margin-bottom: 32px;
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .dg-hero    { grid-column: span 8; }
@@ -956,17 +967,15 @@ ul, ol { list-style: none; }
 .dg-markets { grid-column: span 6; min-height: 380px; }
 .dg-conflict{ grid-column: span 6; min-height: 380px; }
 
-/* Dashboard Widgets */
 .panel-block {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .panel-block:hover {
@@ -976,10 +985,10 @@ ul, ol { list-style: none; }
 }
 
 .panel-header {
-  padding: 14px 20px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-bottom: 1px solid var(--border-light);
   background: #fff;
 }
@@ -996,7 +1005,7 @@ ul, ol { list-style: none; }
   padding: 0;
   flex: 1;
   overflow-y: auto;
-  max-height: 415px; /* Match hero height roughly */
+  max-height: 400px; /* Match hero height */
 }
 
 .feed-item {
