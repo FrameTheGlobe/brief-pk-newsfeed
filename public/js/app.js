@@ -779,27 +779,31 @@ function renderMarket(m) {
   };
 
   container.innerHTML = `
-    <div class="mw-group">
-      <div class="mw-group-label">Forex & Equity</div>
-      ${buildItem('USD/PKR', m.usd.val, m.usd.change, true)}
-      ${buildItem('KSE-100', m.kse.val, m.kse.change)}
-      ${buildItem('Gold (Tola)', m.gold.val)}
-    </div>
-    
-    <div class="mw-group">
-      <div class="mw-group-label">Energy</div>
-      ${buildItem('Petrol', m.petrol.val)}
-      ${buildItem('Diesel', m.diesel.val)}
-      ${buildItem('Electricity', m.electricity.val)}
-      ${buildItem('LPG (KG)', m.lpg.val)}
-    </div>
-    
-    <div class="mw-group">
-      <div class="mw-group-label">Essentials</div>
-      ${buildItem('Atta (10kg)', m.atta.val)}
-      ${buildItem('Sugar (KG)', m.sugar.val)}
-      ${buildItem('Rice (KG)', m.rice.val)}
-      ${buildItem('Chicken (KG)', m.chicken.val)}
+    <div class="mw-group-grid">
+      <div class="mw-group">
+        <div class="mw-group-label">Forex & Equity</div>
+        ${buildItem('USD/PKR', m.usd.val, m.usd.change, true)}
+        ${buildItem('KSE-100', m.kse.val, m.kse.change)}
+        ${buildItem('Gold (Tola)', m.gold.val)}
+      </div>
+      
+      <div class="mw-group">
+        <div class="mw-group-label">Energy</div>
+        ${buildItem('Petrol', m.petrol.val)}
+        ${buildItem('Diesel', m.diesel.val)}
+        ${buildItem('Electricity', m.electricity.val)}
+        ${buildItem('LPG (KG)', m.lpg.val)}
+      </div>
+      
+      <div class="mw-group" style="grid-column: span 2">
+        <div class="mw-group-label">Essentials</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px;">
+          ${buildItem('Atta (10kg)', m.atta.val)}
+          ${buildItem('Sugar (KG)', m.sugar.val)}
+          ${buildItem('Rice (KG)', m.rice.val)}
+          ${buildItem('Chicken (KG)', m.chicken.val)}
+        </div>
+      </div>
     </div>
   `;
 }
