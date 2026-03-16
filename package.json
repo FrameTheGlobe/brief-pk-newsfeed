@@ -7,11 +7,15 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "node server.js",
     "build": "echo 'Static build — no compilation needed'",
     "start": "node server.js"
   },
   "dependencies": {
+    "compression": "^1.8.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {

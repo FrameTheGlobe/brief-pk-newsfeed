@@ -10,16 +10,84 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
 
   <!-- Styles -->
   <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
+<div class="scroll-progress" id="scrollProgress"></div>
 
 <!-- ═══════════════════════════════════════════════
      HEADER
 ═══════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════
+     MARKET TICKER
+═══════════════════════════════════════════════ -->
+<div class="market-bar" id="marketBar">
+  <div class="market-track" id="marketTrack">
+    <!-- USD/PKR -->
+    <div class="market-item">
+      <span class="m-label">USD/PKR</span>
+      <span class="m-value" id="m-usd">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- Gold -->
+    <div class="market-item">
+      <span class="m-label">Gold (24K)</span>
+      <span class="m-value" id="m-gold">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- Petrol -->
+    <div class="market-item">
+      <span class="m-label">Petrol</span>
+      <span class="m-value" id="m-petrol">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- Diesel -->
+    <div class="market-item">
+      <span class="m-label">Diesel</span>
+      <span class="m-value" id="m-diesel">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- Electricity -->
+    <div class="market-item">
+      <span class="m-label">Elec (Unit)</span>
+      <span class="m-value" id="m-elec">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- LPG -->
+    <div class="market-item">
+      <span class="m-label">LPG (KG)</span>
+      <span class="m-value" id="m-lpg">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- Atta -->
+    <div class="market-item">
+      <span class="m-label">Atta (10kg)</span>
+      <span class="m-value" id="m-atta">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- Sugar -->
+    <div class="market-item">
+      <span class="m-label">Sugar</span>
+      <span class="m-value" id="m-sugar">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- Rice -->
+    <div class="market-item">
+      <span class="m-label">Rice (Basmati)</span>
+      <span class="m-value" id="m-rice">—</span>
+    </div>
+    <span class="m-sep">|</span>
+    <!-- KSE 100 -->
+    <div class="market-item">
+      <span class="m-label">KSE-100</span>
+      <span class="m-value" id="m-kse">—</span>
+    </div>
+  </div>
+</div>
+
 <header class="site-header" id="siteHeader">
   <div class="header-left">
     <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
@@ -29,7 +97,11 @@
       brief<span class="logo-dot">.</span><span class="logo-pk">pk</span>
     </a>
     <div class="header-divider"></div>
-    <span class="header-subtitle">Pakistan Newsfeed</span>
+    <div class="lang-switcher" id="headerLangSwitcher">
+      <button class="lang-btn active" data-lang="all">All</button>
+      <button class="lang-btn" data-lang="en">English</button>
+      <button class="lang-btn" data-lang="ur">اردو</button>
+    </div>
   </div>
 
   <div class="header-center">
@@ -125,6 +197,7 @@
           </div>
         </div>
         <div class="hero-side">
+          <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
           <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
           <div class="skel-card side-card"><div class="skel skel-img-side"></div><div class="skel-body"><div class="skel skel-tag"></div><div class="skel skel-h1"></div><div class="skel skel-h2"></div></div></div>
         </div>

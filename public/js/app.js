@@ -16,10 +16,11 @@
 ═══════════════════════════════════════════════ */
 
 const API_URL        = '/api/feeds';
+const MARKET_URL     = '/api/market';
 const CACHE_KEY      = 'briefpk_feeds_cache';
 const CACHE_TTL      = 5 * 60 * 1000; // 5 min
-const SECTION_COUNT  = 5; // cards per category section
-const HERO_COUNT     = 3; // stories in hero (1 main + 2 side)
+const SECTION_COUNT  = 6; // cards per category section
+const HERO_COUNT     = 4; // stories in hero
 
 const CATEGORIES = [
   'All',
@@ -66,6 +67,7 @@ const CAT_ICONS = {
 const State = {
   articles:       [],       // all fetched articles
   activeCategory: 'All',   // current category filter
+  activeLang:     'all',   // 'all' | 'en' | 'ur'
   activeSources:  null,     // Set of source ids (null = all active)
   searchQuery:    '',
   lastFetch:      0,
@@ -178,6 +180,11 @@ function getFiltered() {
     arts = arts.filter(a => State.activeSources.has(a.source.id));
   }
 
+  // Language filter
+  if (State.activeLang !== 'all') {
+    arts = arts.filter(a => a.source.lang === State.activeLang);
+  }
+
   // Category filter
   if (State.activeCategory !== 'All') {
     arts = arts.filter(a => a.category === State.activeCategory);
@@ -198,6 +205,7 @@ function getFiltered() {
 function getByCategory(cat) {
   return State.articles.filter(a => {
     if (State.activeSources && !State.activeSources.has(a.source.id)) return false;
+    if (State.activeLang !== 'all' && a.source.lang !== State.activeLang) return false;
     return a.category === cat;
   });
 }
@@ -243,10 +251,16 @@ function buildPlaceholder(name, color, height) {
 }
 
 function cardFooter(article) {
+  const shareText = encodeURIComponent(`Check out this story on brief.pk: ${article.title} - ${article.link}`);
   return `
     <div class="card-footer">
       <span class="card-time">${escHtml(article.source.name)} · ${timeAgo(article.pubDate)}</span>
-      <span class="card-arrow">→</span>
+      <div class="card-actions">
+        <button class="btn-share" onclick="event.preventDefault();window.open('https://wa.me/?text=${shareText}','_blank')" aria-label="Share on WhatsApp">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.031 6.062c-3.414 0-6.188 2.774-6.188 6.189 0 1.085.285 2.103.784 2.982l-.834 3.045 3.116-.817c.854.464 1.83.729 2.872.729 3.414 0 6.188-2.774 6.188-6.189s-2.774-6.189-6.338-6.189zM12.031 16.5c-.947 0-1.834-.239-2.607-.659l-.187-.101-1.942.51.523-1.905-.112-.178c-.461-.735-.729-1.604-.729-2.54 0-2.5 2.038-4.538 4.538-4.538s4.538 2.038 4.538 4.538-2.038 4.538-5.022 4.538z"></path></svg>
+        </button>
+        <span class="card-arrow">→</span>
+      </div>
     </div>`;
 }
 
@@ -440,10 +454,14 @@ function renderSidebarCategories() {
   const list = document.getElementById('catNavList');
   if (!list) return;
 
-  const allCount = State.articles.length;
+  const arts = State.activeLang === 'all' 
+    ? State.articles 
+    : State.articles.filter(a => a.source.lang === State.activeLang);
+
+  const allCount = arts.length;
 
   list.innerHTML = CATEGORIES.map(cat => {
-    const count  = cat === 'All' ? allCount : getByCategory(cat).length;
+    const count  = cat === 'All' ? allCount : arts.filter(a => a.category === cat).length;
     const active = State.activeCategory === cat ? 'active' : '';
     const cc     = getCatColors(cat);
 
@@ -467,16 +485,20 @@ function renderSidebarSources() {
   const list = document.getElementById('sourceNavList');
   if (!list || !State.articles.length) return;
 
+  const arts = State.activeLang === 'all' 
+    ? State.articles 
+    : State.articles.filter(a => a.source.lang === State.activeLang);
+
   // Count articles per source
   const counts = {};
-  State.articles.forEach(a => {
+  arts.forEach(a => {
     counts[a.source.id] = (counts[a.source.id] || 0) + 1;
   });
 
-  // Get unique sources from articles
+  // Get unique sources from filtered articles
   const sources = [];
   const seen    = new Set();
-  State.articles.forEach(a => {
+  arts.forEach(a => {
     if (!seen.has(a.source.id)) {
       seen.add(a.source.id);
       sources.push(a.source);
@@ -661,6 +683,72 @@ function fullRender() {
 }
 
 /* ═══════════════════════════════════════════════
+   MARKET DATA
+═══════════════════════════════════════════════ */
+
+async function fetchMarket() {
+  try {
+    const res = await fetch(MARKET_URL);
+    const data = await res.json();
+    renderMarket(data);
+  } catch (err) {
+    console.warn('[Market] Fetch failed');
+  }
+}
+
+function renderMarket(m) {
+  const usd = document.getElementById('m-usd');
+  if (usd) {
+    usd.innerHTML = `${m.usd.val.toFixed(2)} <span class="${m.usd.change >= 0 ? 'm-up' : 'm-down'}">${m.usd.change >= 0 ? '▲' : '▼'}</span>`;
+  }
+
+  const kse = document.getElementById('m-kse');
+  if (kse) {
+    kse.innerHTML = `${Math.round(m.kse.val).toLocaleString()} <span class="${m.kse.change >= 0 ? 'm-up' : 'm-down'}">${m.kse.change >= 0 ? '▲' : '▼'}</span>`;
+  }
+
+  const gold = document.getElementById('m-gold');
+  if (gold) {
+    gold.textContent = `Rs. ${m.gold.val.toLocaleString()}`;
+  }
+
+  const petrol = document.getElementById('m-petrol');
+  if (petrol) {
+    petrol.textContent = `Rs. ${m.petrol.val}`;
+  }
+
+  const diesel = document.getElementById('m-diesel');
+  if (diesel) {
+    diesel.textContent = `Rs. ${m.diesel.val}`;
+  }
+
+  const elec = document.getElementById('m-elec');
+  if (elec) {
+    elec.innerHTML = `Rs. ${m.electricity.val} <span class="${m.electricity.change >= 0 ? 'm-up' : 'm-down'}">${m.electricity.change >= 0 ? '▲' : '▼'}</span>`;
+  }
+
+  const lpg = document.getElementById('m-lpg');
+  if (lpg) {
+    lpg.innerHTML = `Rs. ${m.lpg.val} <span class="${m.lpg.change >= 0 ? 'm-up' : 'm-down'}">${m.lpg.change >= 0 ? '▲' : '▼'}</span>`;
+  }
+
+  const atta = document.getElementById('m-atta');
+  if (atta) {
+    atta.innerHTML = `Rs. ${m.atta.val} <span class="${m.atta.change >= 0 ? 'm-up' : 'm-down'}">${m.atta.change >= 0 ? '▲' : '▼'}</span>`;
+  }
+
+  const sugar = document.getElementById('m-sugar');
+  if (sugar) {
+    sugar.innerHTML = `Rs. ${m.sugar.val} <span class="${m.sugar.change >= 0 ? 'm-up' : 'm-down'}">${m.sugar.change >= 0 ? '▲' : '▼'}</span>`;
+  }
+
+  const rice = document.getElementById('m-rice');
+  if (rice) {
+    rice.innerHTML = `Rs. ${m.rice.val} <span class="${m.rice.change >= 0 ? 'm-up' : 'm-down'}">${m.rice.change >= 0 ? '▲' : '▼'}</span>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════
    PUBLIC API  (window.App)
 ═══════════════════════════════════════════════ */
 
@@ -671,7 +759,10 @@ const App = {
     setRefreshLoading(true);
 
     try {
-      await fetchArticles();
+      await Promise.all([
+        fetchArticles(),
+        fetchMarket()
+      ]);
       fullRender();
     } catch (err) {
       showError('Failed to load news feeds. Check your connection and try again.');
@@ -786,6 +877,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   searchClear?.addEventListener('click', () => App.clearSearch());
 
+  // Language Switcher
+  document.getElementById('headerLangSwitcher')?.addEventListener('click', e => {
+    const btn = e.target.closest('.lang-btn');
+    if (!btn) return;
+    
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    State.activeLang = btn.dataset.lang;
+    fullRender();
+  });
+
   // Sidebar toggle (mobile)
   document.getElementById('sidebarToggle')?.addEventListener('click', () => {
     document.getElementById('sidebar')?.classList.toggle('open');
@@ -802,8 +905,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Scroll to top FAB
+  // Scroll progress & FAB
   window.addEventListener('scroll', () => {
+    // Progress
+    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = (winScroll / height) * 100;
+    const progress = document.getElementById('scrollProgress');
+    if (progress) progress.style.width = scrolled + "%";
+
+    // FAB
     document.getElementById('fab')?.classList.toggle('show', scrollY > 600);
   });
 

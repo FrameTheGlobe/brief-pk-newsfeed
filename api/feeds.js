@@ -26,7 +26,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ── RSS parser instance ──────────────────────────────────────────────
 const parser = new Parser({
-  timeout: 10000,
+  timeout: 6000,  // keep well under Vercel's 10s function limit
   headers: {
     'User-Agent': 'brief.pk Newsfeed/1.0 (+https://brief.pk)',
     'Accept':     'application/rss+xml, application/xml, text/xml, */*',
