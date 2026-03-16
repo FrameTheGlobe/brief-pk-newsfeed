@@ -911,6 +911,23 @@ ul, ol { list-style: none; }
   border-radius: 3px;
 }
 
+.tag-breaking {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--red);
+  padding: 2px 7px;
+  border-radius: 3px;
+  animation: breaking-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes breaking-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
 .card-footer {
   display: flex;
   align-items: center;

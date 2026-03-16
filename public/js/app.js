@@ -214,14 +214,23 @@ function getByCategory(cat) {
    CARD HTML BUILDERS
 ═══════════════════════════════════════════════ */
 
+/** Returns true if article is < 60 minutes old */
+function isBreaking(pubDate) {
+  if (!pubDate) return false;
+  const age = Date.now() - new Date(pubDate).getTime();
+  return age > 0 && age < 60 * 60 * 1000;
+}
+
 function buildTags(article, options = {}) {
   const s    = article.source;
   const cc   = getCatColor(article.category);
   const cbg  = getCatBg(article.category);
   const rtl  = article.rtl;
+  const brk  = isBreaking(article.pubDate);
 
   return `
     <div class="card-tags">
+      ${brk ? '<span class="tag-breaking">BREAKING</span>' : ''}
       <span class="tag-source" style="color:${s.color};border-color:${s.color}33;background:${s.color}0d;">
         ${escHtml(s.name)}
       </span>
@@ -234,20 +243,20 @@ function buildTags(article, options = {}) {
 
 function buildCardImage(article, height = 155) {
   if (article.image) {
+    // On error: swap the <img> for a colour placeholder without relying on a global fn call
+    const ph = escHtml(buildPlaceholder(article.source.name, article.source.color, height));
     return `<img class="card-image"
       src="${escHtml(article.image)}"
       alt=""
       loading="lazy"
-      onerror="this.parentElement.innerHTML=buildPlaceholder('${escHtml(article.source.name)}','${article.source.color}',${height})">`;
+      onerror="this.outerHTML='${ph}'">`;
   }
   return buildPlaceholder(article.source.name, article.source.color, height);
 }
 
 function buildPlaceholder(name, color, height) {
   const init = getInitials(name);
-  return `<div class="card-image-placeholder" style="height:${height}px;background:linear-gradient(135deg,${color} 0%,${color}cc 100%);">
-    ${init}
-  </div>`;
+  return `<div class="card-image-placeholder" style="height:${height}px;background:linear-gradient(135deg,${color} 0%,${color}cc 100%);">${init}</div>`;
 }
 
 function cardFooter(article) {
@@ -688,64 +697,81 @@ function fullRender() {
 
 async function fetchMarket() {
   try {
-    const res = await fetch(MARKET_URL);
+    const res  = await fetch(MARKET_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     renderMarket(data);
   } catch (err) {
-    console.warn('[Market] Fetch failed');
+    console.warn('[Market] Fetch failed:', err.message);
   }
 }
 
+/** Format a PKR number with thousands separator */
+function pkrFmt(val, decimals = 0) {
+  if (val == null) return '—';
+  return 'Rs. ' + Number(val).toLocaleString('en-PK', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+/** Build a small up/down arrow span */
+function changeArrow(change) {
+  if (change == null) return '';
+  const cls  = change >= 0 ? 'm-up' : 'm-down';
+  const sym  = change >= 0 ? '▲' : '▼';
+  return ` <span class="${cls}">${sym}</span>`;
+}
+
 function renderMarket(m) {
+  // USD/PKR
   const usd = document.getElementById('m-usd');
   if (usd) {
-    usd.innerHTML = `${m.usd.val.toFixed(2)} <span class="${m.usd.change >= 0 ? 'm-up' : 'm-down'}">${m.usd.change >= 0 ? '▲' : '▼'}</span>`;
+    usd.innerHTML = m.usd.val != null
+      ? `${Number(m.usd.val).toFixed(2)}${changeArrow(m.usd.change)}`
+      : '—';
   }
 
+  // KSE-100
   const kse = document.getElementById('m-kse');
   if (kse) {
-    kse.innerHTML = `${Math.round(m.kse.val).toLocaleString()} <span class="${m.kse.change >= 0 ? 'm-up' : 'm-down'}">${m.kse.change >= 0 ? '▲' : '▼'}</span>`;
+    kse.innerHTML = m.kse.val != null
+      ? `${Math.round(m.kse.val).toLocaleString('en-PK')}${changeArrow(m.kse.change)}`
+      : '—';
   }
 
+  // Gold (PKR/tola)
   const gold = document.getElementById('m-gold');
   if (gold) {
-    gold.textContent = `Rs. ${m.gold.val.toLocaleString()}`;
+    gold.textContent = m.gold.val != null
+      ? `Rs. ${Number(m.gold.val).toLocaleString('en-PK')}`
+      : '—';
   }
 
   const petrol = document.getElementById('m-petrol');
-  if (petrol) {
-    petrol.textContent = `Rs. ${m.petrol.val}`;
-  }
+  if (petrol) petrol.textContent = pkrFmt(m.petrol?.val);
 
   const diesel = document.getElementById('m-diesel');
-  if (diesel) {
-    diesel.textContent = `Rs. ${m.diesel.val}`;
-  }
+  if (diesel) diesel.textContent = pkrFmt(m.diesel?.val);
 
   const elec = document.getElementById('m-elec');
-  if (elec) {
-    elec.innerHTML = `Rs. ${m.electricity.val} <span class="${m.electricity.change >= 0 ? 'm-up' : 'm-down'}">${m.electricity.change >= 0 ? '▲' : '▼'}</span>`;
-  }
+  if (elec) elec.textContent = pkrFmt(m.electricity?.val, 2);
 
   const lpg = document.getElementById('m-lpg');
-  if (lpg) {
-    lpg.innerHTML = `Rs. ${m.lpg.val} <span class="${m.lpg.change >= 0 ? 'm-up' : 'm-down'}">${m.lpg.change >= 0 ? '▲' : '▼'}</span>`;
-  }
+  if (lpg) lpg.textContent = pkrFmt(m.lpg?.val);
 
   const atta = document.getElementById('m-atta');
-  if (atta) {
-    atta.innerHTML = `Rs. ${m.atta.val} <span class="${m.atta.change >= 0 ? 'm-up' : 'm-down'}">${m.atta.change >= 0 ? '▲' : '▼'}</span>`;
-  }
+  if (atta) atta.textContent = pkrFmt(m.atta?.val);
 
   const sugar = document.getElementById('m-sugar');
-  if (sugar) {
-    sugar.innerHTML = `Rs. ${m.sugar.val} <span class="${m.sugar.change >= 0 ? 'm-up' : 'm-down'}">${m.sugar.change >= 0 ? '▲' : '▼'}</span>`;
-  }
+  if (sugar) sugar.textContent = pkrFmt(m.sugar?.val);
 
   const rice = document.getElementById('m-rice');
-  if (rice) {
-    rice.innerHTML = `Rs. ${m.rice.val} <span class="${m.rice.change >= 0 ? 'm-up' : 'm-down'}">${m.rice.change >= 0 ? '▲' : '▼'}</span>`;
-  }
+  if (rice) rice.textContent = pkrFmt(m.rice?.val);
+
+  // Chicken (optional — element may not exist on older HTML)
+  const chicken = document.getElementById('m-chicken');
+  if (chicken) chicken.textContent = pkrFmt(m.chicken?.val);
 }
 
 /* ═══════════════════════════════════════════════
@@ -771,8 +797,10 @@ const App = {
       setRefreshLoading(false);
     }
 
-    // Auto-refresh every 5 min
+    // Auto-refresh news every 5 min
     setInterval(() => App.refresh(false), 5 * 60 * 1000);
+    // Auto-refresh market every 15 min
+    setInterval(() => fetchMarket(), 15 * 60 * 1000);
   },
 
   async refresh(force = true) {

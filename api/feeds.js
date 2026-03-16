@@ -26,7 +26,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ── RSS parser instance ──────────────────────────────────────────────
 const parser = new Parser({
-  timeout: 6000,  // keep well under Vercel's 10s function limit
+  timeout: 4000,  // 4s per source — 47 parallel fetches need headroom under Vercel's 10s limit
   headers: {
     'User-Agent': 'brief.pk Newsfeed/1.0 (+https://brief.pk)',
     'Accept':     'application/rss+xml, application/xml, text/xml, */*',
@@ -88,28 +88,53 @@ function isRtl(str = '') {
   return /[\u0600-\u06FF\u0750-\u077F]/.test(str);
 }
 
+// Keywords used to filter international feeds for Pakistan relevance
+const PK_KEYWORDS = [
+  'pakistan', 'pakistani', 'islamabad', 'karachi', 'lahore',
+  'peshawar', 'quetta', 'rawalpindi', 'multan', 'faisalabad',
+  'imran khan', 'shehbaz', 'nawaz', 'pti', 'pml-n', 'ppp',
+  'isi', 'pakistan army', 'ispr', 'cpec', 'imf pakistan',
+  'kashmir', 'balochistan', 'khyber', 'sindh', 'punjab',
+  'kse', 'pak rupee', 'sbp', 'state bank of pakistan',
+];
+
+function isPakistanRelevant(title = '', desc = '') {
+  const text = (title + ' ' + desc).toLowerCase();
+  return PK_KEYWORDS.some(kw => text.includes(kw));
+}
+
 // ── Fetch a single source ────────────────────────────────────────────
 
 async function fetchSource(source) {
   try {
-    const feed = await parser.parseURL(source.url);
-    return (feed.items || []).slice(0, 20).map(item => ({
-      id:          item.guid || item.link || `${source.id}-${Date.now()}-${Math.random()}`,
-      title:       clean(item.title || ''),
-      description: truncate(item.contentSnippet || item.summary || '', 180),
-      link:        item.link || '',
-      pubDate:     item.pubDate || item.isoDate || new Date().toISOString(),
-      image:       getImage(item),
-      source: {
-        id:    source.id,
-        name:  source.name,
-        color: source.color,
-        type:  source.type,
-        lang:  source.lang,
-      },
-      category: detectCategory(item.title, item.contentSnippet || item.summary),
-      rtl:      isRtl(item.title || ''),
-    }));
+    const feed  = await parser.parseURL(source.url);
+    const items = (feed.items || []).slice(0, 25);
+
+    return items
+      .filter(item => {
+        // For international feeds, only keep Pakistan-relevant articles
+        if (source.pakistanFilter) {
+          return isPakistanRelevant(item.title, item.contentSnippet || item.summary);
+        }
+        return true;
+      })
+      .map(item => ({
+        id:          item.guid || item.link || `${source.id}-${Date.now()}-${Math.random()}`,
+        title:       clean(item.title || ''),
+        description: truncate(item.contentSnippet || item.summary || '', 200),
+        link:        item.link || '',
+        pubDate:     item.pubDate || item.isoDate || new Date().toISOString(),
+        image:       getImage(item),
+        source: {
+          id:    source.id,
+          name:  source.name,
+          color: source.color,
+          type:  source.type,
+          lang:  source.lang,
+        },
+        category: detectCategory(item.title, item.contentSnippet || item.summary),
+        rtl:      isRtl(item.title || ''),
+      }));
   } catch (err) {
     console.warn(`[feeds] Failed to fetch ${source.name}: ${err.message}`);
     return [];
