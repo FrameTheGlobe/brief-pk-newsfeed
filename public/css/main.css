@@ -417,9 +417,9 @@ img { display: block; }
   .sidebar-lang-section { display: block; }
 }
 
-/* Hamburger */
+/* Hamburger — desktop: hidden (sidebar always visible), mobile: shown */
 .sidebar-toggle {
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 4px;
   background: none;
@@ -1220,6 +1220,9 @@ img { display: block; }
     --market-h:  30px;
     --ticker-h:  28px;
   }
+
+  /* Show hamburger on mobile — it opens the sidebar drawer */
+  .sidebar-toggle { display: flex; }
 
   /* Body padding for bottom nav */
   body { padding-bottom: 60px; }
