@@ -88,14 +88,41 @@ function isRtl(str = '') {
   return /[\u0600-\u06FF\u0750-\u077F]/.test(str);
 }
 
-// Keywords used to filter international feeds for Pakistan relevance
+// Keywords used to filter feeds for Pakistan relevance
+// Applied to ALL sources unless source.pakistanFilter === false
 const PK_KEYWORDS = [
-  'pakistan', 'pakistani', 'islamabad', 'karachi', 'lahore',
-  'peshawar', 'quetta', 'rawalpindi', 'multan', 'faisalabad',
-  'imran khan', 'shehbaz', 'nawaz', 'pti', 'pml-n', 'ppp',
-  'isi', 'pakistan army', 'ispr', 'cpec', 'imf pakistan',
-  'kashmir', 'balochistan', 'khyber', 'sindh', 'punjab',
-  'kse', 'pak rupee', 'sbp', 'state bank of pakistan',
+  // Country
+  'pakistan', 'pakistani', 'pak ',
+  // Major cities
+  'islamabad', 'karachi', 'lahore', 'peshawar', 'quetta', 'rawalpindi',
+  'multan', 'faisalabad', 'hyderabad', 'gujranwala', 'sialkot', 'abbottabad',
+  'swat', 'mardan', 'larkana', 'sukkur', 'gilgit', 'muzaffarabad',
+  // Provinces & territories
+  'balochistan', 'khyber pakhtunkhwa', 'sindh', 'punjab', 'kpk', 'fata',
+  'azad kashmir', 'ajk ', 'gilgit-baltistan', 'gb ',
+  // Key politicians & parties
+  'imran khan', 'shehbaz', 'nawaz sharif', 'maryam nawaz', 'bilawal',
+  'asif zardari', 'fazlur rehman', 'siraj ul haq',
+  'pti', 'pml-n', 'pmln', 'ppp', 'mqm', 'jui-f', 'tehreek-e-insaf',
+  // Government & courts
+  'national assembly', 'senate of pakistan', 'supreme court of pakistan',
+  'lahore high court', 'sindh high court', 'balochistan high court',
+  'election commission of pakistan', 'ecp ', 'govt of pakistan',
+  // Economy & finance
+  'state bank of pakistan', 'sbp', 'kse', 'psx', 'karachi stock',
+  'pak rupee', 'pakistani rupee', 'pkr', 'imf pakistan', 'cpec',
+  'fbr ', 'secp', 'ogra', 'nepra', 'wapda', 'pso ',
+  // Military & security
+  'pakistan army', 'ispr', 'coas', 'isi ', 'dg ispr', 'dg isi',
+  'inter-services', 'pak air force', 'pak navy', 'paf ',
+  'fc balochistan', 'frontier corps', 'rangers', 'ctd ',
+  'ttp ', 'tehrik-i-taliban', 'baloch liberation',
+  // Kashmir & border
+  'kashmir', 'line of control', 'loc ', 'torkham', 'chaman',
+  'durand line', 'pak-afghan', 'pak-iran', 'pak-india', 'pak-china',
+  // Urdu script
+  'پاکستان', 'کراچی', 'لاہور', 'اسلام آباد', 'پشاور', 'کوئٹہ',
+  'وزیراعظم', 'فوج', 'حکومت', 'عمران خان', 'شہباز',
 ];
 
 function isPakistanRelevant(title = '', desc = '') {
@@ -112,10 +139,10 @@ async function fetchSource(source) {
 
     const posts = items
       .filter(item => {
-        if (source.pakistanFilter) {
-          return isPakistanRelevant(item.title, item.contentSnippet || item.summary);
-        }
-        return true;
+        // Sources explicitly marked false are Pakistan-only feeds — no filter needed
+        if (source.pakistanFilter === false) return true;
+        // Everything else is filtered for Pakistan relevance by default
+        return isPakistanRelevant(item.title, item.contentSnippet || item.summary);
       })
       .map(item => ({
         id:          item.guid || item.link || `${source.id}-${Date.now()}-${Math.random()}`,

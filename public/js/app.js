@@ -227,23 +227,17 @@ function isBreaking(pubDate) {
   return age > 0 && age < 60 * 60 * 1000;
 }
 
-function buildTags(article, options = {}) {
+function buildTags(article) {
   const s    = article.source;
   const cc   = getCatColor(article.category);
-  const cbg  = getCatBg(article.category);
-  const rtl  = article.rtl;
   const brk  = isBreaking(article.pubDate);
 
   return `
     <div class="card-tags">
-      ${brk ? '<span class="tag-breaking">BREAKING</span>' : ''}
-      <span class="tag-source" style="color:${s.color};border-color:${s.color}33;background:${s.color}0d;">
-        ${escHtml(s.name)}
-      </span>
-      <span class="tag-cat" style="color:${cc};background:${cbg};">
-        ${escHtml(article.category)}
-      </span>
-      ${rtl ? '<span class="tag-rtl">اردو</span>' : ''}
+      <span class="tag-cat" style="color:var(--accent)">${escHtml(article.category).toUpperCase()}</span>
+      <span class="tag-sep">|</span>
+      <span class="tag-source">${escHtml(s.name)}</span>
+      ${brk ? '<span class="tag-breaking" style="color:var(--accent);margin-left:8px;font-weight:900">BREAKING</span>' : ''}
     </div>`;
 }
 
@@ -268,13 +262,12 @@ function buildPlaceholder(name, color, height) {
 function cardFooter(article) {
   const shareText = encodeURIComponent(`Check out this story on brief.pk: ${article.title} - ${article.link}`);
   return `
-    <div class="card-footer">
-      <span class="card-time">${escHtml(article.source.name)} · ${timeAgo(article.pubDate)}</span>
+    <div class="card-footer" style="border:none; padding:0; margin-top:8px;">
+      <span class="card-meta">${escHtml(article.source.name)} · ${timeAgo(article.pubDate)}</span>
       <div class="card-actions">
-        <button class="btn-share" onclick="event.preventDefault();window.open('https://wa.me/?text=${shareText}','_blank')" aria-label="Share on WhatsApp">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12.031 6.062c-3.414 0-6.188 2.774-6.188 6.189 0 1.085.285 2.103.784 2.982l-.834 3.045 3.116-.817c.854.464 1.83.729 2.872.729 3.414 0 6.188-2.774 6.188-6.189s-2.774-6.189-6.338-6.189zM12.031 16.5c-.947 0-1.834-.239-2.607-.659l-.187-.101-1.942.51.523-1.905-.112-.178c-.461-.735-.729-1.604-.729-2.54 0-2.5 2.038-4.538 4.538-4.538s4.538 2.038 4.538 4.538-2.038 4.538-5.022 4.538z"></path></svg>
+        <button class="btn-share" onclick="event.preventDefault();window.open('https://wa.me/?text=${shareText}','_blank')" aria-label="Share on WhatsApp" style="padding:0">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12.031 6.062c-3.414 0-6.188 2.774-6.188 6.189 0 1.085.285 2.103.784 2.982l-.834 3.045 3.116-.817c.854.464 1.83.729 2.872.729 3.414 0 6.188-2.774 6.188-6.189s-2.774-6.189-6.338-6.189zM12.031 16.5c-.947 0-1.834-.239-2.607-.659l-.187-.101-1.942.51.523-1.905-.112-.178c-.461-.735-.729-1.604-.729-2.54 0-2.5 2.038-4.538 4.538-4.538s4.538 2.038 4.538 4.538-2.038 4.538-5.022 4.538z"></path></svg>
         </button>
-        <span class="card-arrow">→</span>
       </div>
     </div>`;
 }
@@ -299,19 +292,15 @@ function buildHeroMain(article) {
 }
 
 /* ── Side card ──────────────────────────────── */
+/* ── Side card (Hero Right) ──────────────────── */
 function buildSideCard(article) {
   if (!article) return '';
-  const img = article.image
-    ? `<img class="card-image" src="${escHtml(article.image)}" alt="" loading="lazy" onerror="this.style.display='none'">`
-    : buildPlaceholder(article.source.name, article.source.color, 100);
-
   return `
     <a class="side-card" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
-      ${img}
+      ${buildCardImage(article)}
       <div class="card-body">
-        ${buildTags(article)}
         <div class="card-headline${article.rtl ? ' rtl' : ''}">${escHtml(article.title)}</div>
-        ${cardFooter(article)}
+        <div class="card-meta">${escHtml(article.source.name)} · ${timeAgo(article.pubDate)}</div>
       </div>
     </a>`;
 }
@@ -366,18 +355,15 @@ function renderHero(articles) {
 function renderCategorySection(cat, articles) {
   if (!articles.length) return '';
   const cc      = getCatColor(cat);
-  const icon    = CAT_ICONS[cat] || '●';
   const visible = articles.slice(0, SECTION_COUNT);
+  const label   = State.activeLang === 'ur' ? (State.activeLang === 'ur' ? escHtml(cat) : escHtml(cat)) : escHtml(cat); 
 
   return `
-    <section class="category-section" id="section-${cat.toLowerCase().replace(/\s+/g, '-')}">
-      <div class="section-header">
-        <div class="section-title-group">
-          <span class="section-dot" style="background:${cc};"></span>
-          <h2 class="section-title">${escHtml(cat)}</h2>
-        </div>
-        <a class="section-see-all" href="#" onclick="App.filterCategory('${escHtml(cat)}');return false;">
-          All ${escHtml(cat)} →
+    <section class="panel-block" id="section-${cat.toLowerCase().replace(/\s+/g, '-')}" style="border-top:3px solid ${cc};">
+      <div class="panel-header">
+        <h2 class="panel-title" style="font-size:13px;letter-spacing:0.04em;color:${cc};">${label}</h2>
+        <a class="section-header-link" href="#" onclick="App.filterCategory('${escHtml(cat)}');return false;">
+          All ${label} →
         </a>
       </div>
       <div class="cards-row">
@@ -413,28 +399,23 @@ function renderAllSections(articles) {
 }
 
 function renderSingleCategory(articles) {
-  const heroGrid = document.getElementById('heroGrid');
   const container = document.getElementById('categorySections');
-
-  // Hide hero section completely in category view
   const heroSection = document.getElementById('heroSection');
   if (heroSection) heroSection.style.display = 'none';
 
-  const cc   = getCatColor(State.activeCategory);
-  const icon = CAT_ICONS[State.activeCategory] || '●';
+  const cc = getCatColor(State.activeCategory);
 
   container.innerHTML = `
-    <section class="category-section">
-      <div class="section-header">
-        <div class="section-title-group">
-          <span class="section-dot" style="background:${cc};"></span>
-          <h2 class="section-title">${escHtml(State.activeCategory)}</h2>
-          <span style="font-size:12px;color:var(--text-3);margin-left:4px;">${articles.length} stories</span>
+    <section class="panel-block" style="border-top:3px solid ${cc};">
+      <div class="panel-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <h2 class="panel-title" style="font-size:13px;color:${cc};">${escHtml(State.activeCategory)}</h2>
+          <span style="font-size:10px; font-weight:600; color:var(--text-4); font-family:var(--font-data);">${articles.length} reports</span>
         </div>
-        <button class="section-see-all" onclick="App.filterCategory('All')">← All topics</button>
+        <button class="section-header-link" style="background:none; border:none;" onclick="App.filterCategory('All')">← Back</button>
       </div>
       <div class="cards-row">
-        ${articles.map(buildNewsCard).join('') || '<div class="empty-state"><h3>No stories in this category yet</h3></div>'}
+        ${articles.map(buildNewsCard).join('') || '<div class="empty-state"><h3>No reports in this lens yet</h3></div>'}
       </div>
     </section>`;
 }
@@ -445,19 +426,17 @@ function renderSearchResults(articles) {
 
   const container = document.getElementById('categorySections');
   container.innerHTML = `
-    <section class="category-section">
-      <div class="section-header">
-        <div class="section-title-group">
-          <span class="section-dot teal"></span>
-          <h2 class="section-title">Search results for "${escHtml(State.searchQuery)}"</h2>
-          <span style="font-size:12px;color:var(--text-3);margin-left:6px;">${articles.length} found</span>
-        </div>
-        <button class="section-see-all" onclick="App.clearSearch()">✕ Clear</button>
+    <section class="panel-block editorial-col" style="margin-top:0;">
+      <div class="panel-header" style="background:var(--accent)">
+        <span class="panel-title">Search: Found ${articles.length} Intel Reports</span>
+        <button class="btn-refresh" style="background:rgba(255,255,255,0.2);margin:-8px;" onclick="App.clearSearch()">✕ CLEAR</button>
       </div>
-      ${articles.length
-        ? `<div class="cards-row">${articles.map(buildNewsCard).join('')}</div>`
-        : `<div class="empty-state"><h3>No results found</h3><p>Try a different search term.</p></div>`
-      }
+      <div class="cards-row" style="padding:24px;">
+        ${articles.length
+          ? articles.map(buildNewsCard).join('')
+          : `<div class="empty-state"><h3>No results found</h3><p>Try a different keyword.</p></div>`
+        }
+      </div>
     </section>`;
 }
 
@@ -478,12 +457,12 @@ function renderSidebarCategories() {
   list.innerHTML = CATEGORIES.map(cat => {
     const count  = cat === 'All' ? allCount : arts.filter(a => a.category === cat).length;
     const active = State.activeCategory === cat ? 'active' : '';
-    const cc     = getCatColors(cat);
+    const cc     = getCatColor(cat);
 
     return `
       <li>
         <button class="nav-item ${active}" onclick="App.filterCategory('${escHtml(cat)}')">
-          <span class="nav-item-dot" style="background:${cc};"></span>
+          <span class="nav-item-dot" style="width:6px;height:6px;border-radius:50%;background:${cc};margin-right:12px;flex-shrink:0;"></span>
           ${escHtml(cat)}
           ${count > 0 ? `<span class="nav-item-count">${count}</span>` : ''}
         </button>
@@ -543,7 +522,7 @@ function renderLiveFeed() {
   const list = document.getElementById('liveFeedList');
   if (!list) return;
 
-  const arts = getFiltered(); // Respect active language/category
+  const arts = getFiltered();
   const recent = arts.slice(0, 15);
   if (!recent.length) {
     list.innerHTML = `<li class="feed-item"><div class="feed-title">No recent updates</div></li>`;
@@ -554,8 +533,7 @@ function renderLiveFeed() {
     <li class="feed-item" onclick="window.open('${escHtml(a.link)}','_blank')">
       <div class="feed-title${a.rtl ? ' rtl' : ''}">${escHtml(a.title)}</div>
       <div class="feed-meta">
-        <span class="feed-source-dot" style="background:${a.source.color};"></span>
-        <span>${escHtml(a.source.name)}</span>
+        <span style="color:var(--accent); font-weight:800">${escHtml(a.source.name)}</span>
         <span>·</span>
         <span>${timeAgo(a.pubDate)}</span>
       </div>
@@ -568,34 +546,27 @@ function renderConflictWatch() {
 
   const keywordsEn = ['afghan', 'taliban', 'border', 'ttp', 'conflict', 'security', 'chaman', 'torkham', 'militant', 'insurgent', 'cross-border'];
   const keywordsUr = ['افغان', 'طالبان', 'سرحد', 'ٹی ٹی پی', 'سیکیورٹی', 'چمن', 'تورخم', 'عسکریت پسند', 'شورش', 'دھماکہ'];
-  
   const conflictSources = ['khorasandiary', 'tolonews', 'khaama', 'pajhwok'];
   
-  const arts = getFiltered(); // Respect active language
+  const arts = getFiltered();
   const relevant = arts.filter(a => {
     const fromConflictSrc = conflictSources.includes(a.source.id);
     const title = (a.title || '').toLowerCase();
-    const desc = (a.description || '').toLowerCase();
-    
-    const engMatch = keywordsEn.some(k => title.includes(k) || desc.includes(k));
-    const urMatch  = keywordsUr.some(k => title.includes(k) || desc.includes(k));
-    
+    const engMatch = keywordsEn.some(k => title.includes(k));
+    const urMatch  = keywordsUr.some(k => title.includes(k));
     return fromConflictSrc || engMatch || urMatch;
   }).slice(0, 12);
 
-  const emptyMsg = State.activeLang === 'ur' ? 'تنازعہ کی کوئی خبر دستیاب نہیں ہے' : 'No recent conflict reports';
-
   if (!relevant.length) {
-    list.innerHTML = `<li class="feed-item"><div class="feed-title">${emptyMsg}</div></li>`;
+    list.innerHTML = `<li class="feed-item"><div class="feed-title">No recent intelligence</div></li>`;
     return;
   }
 
   list.innerHTML = relevant.map(a => `
-    <li class="feed-item conflict-item" onclick="window.open('${escHtml(a.link)}','_blank')">
+    <li class="feed-item" onclick="window.open('${escHtml(a.link)}','_blank')">
       <div class="feed-title${a.rtl ? ' rtl' : ''}">${escHtml(a.title)}</div>
       <div class="feed-meta">
-        <span class="feed-source-dot" style="background:${a.source.color};"></span>
-        <span>${escHtml(a.source.name)}</span>
+        <span style="color:var(--gold); font-weight:800">${escHtml(a.source.name)}</span>
         <span>·</span>
         <span>${timeAgo(a.pubDate)}</span>
       </div>
@@ -691,9 +662,7 @@ function updateHeaderStats() {
 
   // Translation
   const ui = {
-    lblStories: State.activeLang === 'ur' ? 'خبریں' : 'stories',
-    lblSources: State.activeLang === 'ur' ? 'ذرائع' : 'sources',
-    lblHeroTitle: State.activeLang === 'ur' ? 'اہم خبریں' : 'Top Stories',
+    lblHeroTitle: State.activeLang === 'ur' ? 'اہم انٹیلی جنس' : 'Top Intelligence',
   };
   
   for (const id in ui) {
@@ -730,13 +699,12 @@ function fullRender() {
   const filtered = getFiltered();
   const isDashboardMode = (State.activeCategory === 'All' && !State.searchQuery);
 
-  // Dashboard Row 1 (Hero + Live)
-  const row1 = document.getElementById('dashboardRow1');
-  if (row1) row1.style.display = isDashboardMode ? '' : 'none';
+  // Dashboard Grid Toggle
+  const grid = document.querySelector('.dashboard-grid');
+  if (grid) grid.style.display = isDashboardMode ? '' : 'none';
 
-  // Dashboard Row 2 (Intel)
-  const row2 = document.getElementById('dashboardRow2');
-  if (row2) row2.style.display = isDashboardMode ? '' : 'none';
+  const intelDash = document.getElementById('intelDashboard');
+  if (intelDash) intelDash.style.display = isDashboardMode ? 'grid' : 'none';
 
   // Main sections
   renderAllSections(filtered);
@@ -790,68 +758,82 @@ function changeArrow(change) {
 }
 
 function renderMarket(m) {
-  const container = document.getElementById('marketWidget');
-  if (!container) return;
+  const container = document.getElementById('marketWidgetContainer');
+  const bar       = document.getElementById('marketTrack');
+  if (!container || !m) return;
 
-  const buildItem = (label, val, change, isCurrency = false) => {
-    const arrow = changeArrow(change);
-    const value = val != null 
-      ? (isCurrency ? Number(val).toFixed(2) : Math.round(val).toLocaleString('en-PK')) 
-      : '—';
+  const fmt = (v, dec = 0) =>
+    v != null ? Number(v).toLocaleString('en-PK', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : '—';
+
+  // ── LIVE MARKET rows (top section) ────────────────────────
+  const buildLiveRow = (label, val, change, isCurrency = false) => {
+    const value = val != null ? (isCurrency ? fmt(val, 2) : fmt(val)) : '—';
+    const cls   = change > 0 ? 'm-up' : change < 0 ? 'm-down' : '';
+    const pct   = change != null ? `<span class="mw-row-pct ${cls}">${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%</span>` : '';
     return `
-      <div class="mw-item">
-        <span class="mw-label">${label}</span>
-        <span class="mw-value">Rs. ${value}${arrow}</span>
+      <div class="mw-row">
+        <div class="mw-row-label">${label}</div>
+        <div class="mw-row-val ${cls}">${isCurrency ? 'Rs ' : ''}${value}</div>
+        <div class="mw-row-change">${pct}</div>
       </div>`;
   };
 
-  const trans = {
-    'Forex & Equity': 'فاریکس اور ایکویٹی',
-    'Energy': 'توانائی',
-    'Essentials': 'ضروریات زندگی',
-    'USD/PKR': 'ڈالر/روپیہ',
-    'KSE-100': 'کے ایس ای 100',
-    'Gold (Tola)': 'سونا (فی تولہ)',
-    'Petrol': 'پیٹرول',
-    'Diesel': 'ڈیزل',
-    'Electricity': 'بجلی',
-    'LPG (KG)': 'ایل پی جی (کلو)',
-    'Atta (10kg)': 'آٹا (10 کلو)',
-    'Sugar (KG)': 'چینی (کلو)',
-    'Rice (KG)': 'چاول (کلو)',
-    'Chicken (KG)': 'مرغی (کلو)'
-  };
+  // ── ESSENTIAL price tiles (bottom grid) ───────────────────
+  const buildTile = (label, val, unit, dec = 0) => `
+    <div class="mw-tile">
+      <div class="mw-tile-label">${label}</div>
+      <div class="mw-tile-val">Rs ${fmt(val, dec)}<span class="mw-tile-unit"> ${unit}</span></div>
+    </div>`;
 
-  const getLabel = (l) => State.activeLang === 'ur' ? (trans[l] || l) : l;
+  const trans = {
+    'USD/PKR':'ڈالر/روپیہ','KSE-100':'کے ایس ای 100','Gold':'سونا (تولہ)',
+    'Petrol':'پیٹرول','Diesel':'ڈیزل','LPG':'ایل پی جی','Electricity':'بجلی',
+    'Atta':'آٹا','Sugar':'چینی','Rice':'چاول','Chicken':'مرغی',
+  };
+  const lbl = (l) => State.activeLang === 'ur' ? (trans[l] || l) : l;
 
   container.innerHTML = `
-    <div class="mw-group-grid">
-      <div class="mw-group">
-        <div class="mw-group-label">${getLabel('Forex & Equity')}</div>
-        ${buildItem(getLabel('USD/PKR'), m.usd.val, m.usd.change, true)}
-        ${buildItem(getLabel('KSE-100'), m.kse.val, m.kse.change)}
-        ${buildItem(getLabel('Gold (Tola)'), m.gold.val)}
-      </div>
-      
-      <div class="mw-group">
-        <div class="mw-group-label">${getLabel('Energy')}</div>
-        ${buildItem(getLabel('Petrol'), m.petrol.val)}
-        ${buildItem(getLabel('Diesel'), m.diesel.val)}
-        ${buildItem(getLabel('Electricity'), m.electricity.val)}
-        ${buildItem(getLabel('LPG (KG)'), m.lpg.val)}
-      </div>
-      
-      <div class="mw-group" style="grid-column: span 2">
-        <div class="mw-group-label">${getLabel('Essentials')}</div>
-        <div class="mw-essentials-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px;">
-          ${buildItem(getLabel('Atta (10kg)'), m.atta.val)}
-          ${buildItem(getLabel('Sugar (KG)'), m.sugar.val)}
-          ${buildItem(getLabel('Rice (KG)'), m.rice.val)}
-          ${buildItem(getLabel('Chicken (KG)'), m.chicken.val)}
-        </div>
-      </div>
+    <div class="mw-section-header">Live Markets</div>
+    ${buildLiveRow(lbl('USD/PKR'), m.usd.val,  m.usd.change,  true)}
+    ${buildLiveRow(lbl('KSE-100'), m.kse.val,  m.kse.change)}
+    ${buildLiveRow(lbl('Gold'),    m.gold.val, null)}
+    <div class="mw-section-header">Daily Essentials</div>
+    <div class="mw-tile-grid">
+      ${buildTile(lbl('Petrol'),      m.petrol.val,      '/L',    2)}
+      ${buildTile(lbl('Diesel'),      m.diesel.val,      '/L',    2)}
+      ${buildTile(lbl('LPG'),         m.lpg.val,         '/KG',   2)}
+      ${buildTile(lbl('Electricity'), m.electricity.val, '/unit', 2)}
+      ${buildTile(lbl('Atta'),        m.atta.val,        '/10KG'   )}
+      ${buildTile(lbl('Sugar'),       m.sugar.val,       '/KG'     )}
+      ${buildTile(lbl('Rice'),        m.rice.val,        '/KG'     )}
+      ${buildTile(lbl('Chicken'),     m.chicken.val,     '/KG'     )}
     </div>
   `;
+
+  // ── Market Bar: ALL 11 items, duplicated for seamless loop ─
+  if (bar) {
+    const sep = `<span class="m-sep">◆</span>`;
+    const items = [
+      { l:'USD/PKR',  d:`${fmt(m.usd.val,2)}`,                c: m.usd.change },
+      { l:'KSE-100',  d:`${fmt(m.kse.val)}`,                  c: m.kse.change },
+      { l:'GOLD/TOLA',d:`Rs ${fmt(m.gold.val)}`,              c: null },
+      { l:'PETROL',   d:`Rs ${fmt(m.petrol.val,2)}/L`,        c: null },
+      { l:'DIESEL',   d:`Rs ${fmt(m.diesel.val,2)}/L`,        c: null },
+      { l:'LPG',      d:`Rs ${fmt(m.lpg.val,2)}/KG`,          c: null },
+      { l:'ELEC',     d:`Rs ${fmt(m.electricity.val,2)}/unit`, c: null },
+      { l:'ATTA',     d:`Rs ${fmt(m.atta.val)}/10KG`,         c: null },
+      { l:'SUGAR',    d:`Rs ${fmt(m.sugar.val)}/KG`,          c: null },
+      { l:'RICE',     d:`Rs ${fmt(m.rice.val)}/KG`,           c: null },
+      { l:'CHICKEN',  d:`Rs ${fmt(m.chicken.val)}/KG`,        c: null },
+    ];
+    const renderItem = it => {
+      const arr = it.c != null
+        ? ` <span class="${it.c >= 0 ? 'm-up' : 'm-down'}">${it.c >= 0 ? '▲' : '▼'} ${Math.abs(it.c).toFixed(2)}%</span>`
+        : '';
+      return `<span class="m-item"><span class="m-label">${it.l}</span><span class="m-val">${it.d}</span>${arr}</span>${sep}`;
+    };
+    bar.innerHTML = [...items, ...items].map(renderItem).join('');
+  }
 }
 
 /* ═══════════════════════════════════════════════
@@ -886,12 +868,12 @@ const App = {
     const conflictTabs = document.querySelectorAll('.conflict-tab');
     conflictTabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        const target = tab.getAttribute('data-target');
+        const tabId = tab.getAttribute('data-tab');
         conflictTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         
-        document.getElementById('conflictReports').style.display = target === 'conflictReports' ? '' : 'none';
-        document.getElementById('conflictSocial').style.display = target === 'conflictSocial' ? '' : 'none';
+        document.getElementById('conflictReports').style.display = tabId === 'reports' ? '' : 'none';
+        document.getElementById('conflictSocial').style.display = tabId === 'social' ? '' : 'none';
       });
     });
   },
@@ -971,6 +953,7 @@ function showError(msg) {
 
 function closeSidebar() {
   document.getElementById('sidebar')?.classList.remove('open');
+  document.getElementById('sidebarOverlay')?.classList.remove('visible');
 }
 
 /* ═══════════════════════════════════════════════
@@ -998,16 +981,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   searchClear?.addEventListener('click', () => App.clearSearch());
 
-  // Language Switcher
+  // Language Switcher (header + sidebar both sync)
+  function handleLangSwitch(lang) {
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === lang);
+    });
+    State.activeLang = lang;
+    fullRender();
+  }
+
   document.getElementById('headerLangSwitcher')?.addEventListener('click', e => {
     const btn = e.target.closest('.lang-btn');
-    if (!btn) return;
-    
-    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    
-    State.activeLang = btn.dataset.lang;
-    fullRender();
+    if (btn) handleLangSwitch(btn.dataset.lang);
+  });
+  document.getElementById('sidebarLangSwitcher')?.addEventListener('click', e => {
+    const btn = e.target.closest('.lang-btn');
+    if (btn) handleLangSwitch(btn.dataset.lang);
   });
 
   // Refresh
@@ -1015,21 +1004,49 @@ document.addEventListener('DOMContentLoaded', () => {
     App.refresh();
   });
 
-  // Sidebar toggle (mobile)
-  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
-    document.getElementById('sidebar')?.classList.toggle('open');
+  // Sidebar toggle (mobile) + overlay
+  const sidebarEl  = document.getElementById('sidebar');
+  const toggleBtn  = document.getElementById('sidebarToggle');
+  const overlayEl  = document.getElementById('sidebarOverlay');
+
+  function openSidebar() {
+    sidebarEl?.classList.add('open');
+    overlayEl?.classList.add('visible');
+  }
+  function closeSidebarMobile() {
+    sidebarEl?.classList.remove('open');
+    overlayEl?.classList.remove('visible');
+  }
+
+  toggleBtn?.addEventListener('click', () => {
+    sidebarEl?.classList.contains('open') ? closeSidebarMobile() : openSidebar();
+  });
+  overlayEl?.addEventListener('click', closeSidebarMobile);
+
+  // Override closeSidebar global to also hide overlay
+  window._closeSidebarMobile = closeSidebarMobile;
+
+  // Mobile bottom nav: active state + search toggle
+  const mnavBtns = document.querySelectorAll('.mnav-btn');
+  function setMnavActive(id) {
+    mnavBtns.forEach(b => b.classList.remove('active'));
+    document.getElementById(id)?.classList.add('active');
+  }
+
+  document.getElementById('mnavFeed')?.addEventListener('click',     () => setMnavActive('mnavFeed'));
+  document.getElementById('mnavPolitics')?.addEventListener('click',  () => setMnavActive('mnavPolitics'));
+  document.getElementById('mnavMarkets')?.addEventListener('click',   () => setMnavActive('mnavMarkets'));
+  document.getElementById('mnavSecurity')?.addEventListener('click',  () => setMnavActive('mnavSecurity'));
+
+  document.getElementById('mnavSearchToggle')?.addEventListener('click', () => {
+    setMnavActive('mnavSearchToggle');
+    const inp = document.getElementById('searchInput');
+    inp?.focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // Close sidebar when clicking outside on mobile
-  document.addEventListener('click', e => {
-    const sidebar = document.getElementById('sidebar');
-    const toggle  = document.getElementById('sidebarToggle');
-    if (sidebar?.classList.contains('open') &&
-        !sidebar.contains(e.target) &&
-        !toggle.contains(e.target)) {
-      sidebar.classList.remove('open');
-    }
-  });
+  // Set Feed active on start
+  setMnavActive('mnavFeed');
 
   // Scroll progress & FAB
   window.addEventListener('scroll', () => {

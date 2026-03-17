@@ -1,6 +1,6 @@
 {
   "name": "brief-pk-newsfeed",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "brief.pk — Pakistan Newsfeed Dashboard",
   "private": true,
   "engines": {
