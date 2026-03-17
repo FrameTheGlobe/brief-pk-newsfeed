@@ -158,7 +158,7 @@ async function fetchSource(source) {
           type:  source.type,
           lang:  source.lang,
         },
-        category: detectCategory(item.title, item.contentSnippet || item.summary),
+        category: detectCategory(item.title),
         rtl:      isRtl(item.title || ''),
       }));
     

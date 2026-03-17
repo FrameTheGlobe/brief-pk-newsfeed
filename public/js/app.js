@@ -22,6 +22,7 @@ const CACHE_TTL      = 5 * 60 * 1000; // 5 min
 const SECTION_COUNT  = 6; // cards per category section
 const HERO_COUNT     = 4; // stories in hero
 
+// Categories shown in the intelligence lens (Entertainment is intentionally excluded)
 const CATEGORIES = [
   'All',
   'Politics',
@@ -34,6 +35,9 @@ const CATEGORIES = [
   'Sports',
   'Technology',
 ];
+
+// Entertainment articles are categorised but suppressed from all intelligence views
+const EXCLUDED_CATS = new Set(['Entertainment']);
 
 const CAT_COLORS = {
   'Politics':       '#6D28D9',
@@ -181,6 +185,9 @@ async function fetchArticles(force = false) {
 function getFiltered() {
   let arts = State.articles;
 
+  // Suppress entertainment from all intelligence views
+  arts = arts.filter(a => !EXCLUDED_CATS.has(a.category));
+
   // Source filter
   if (State.activeSources && State.activeSources.size > 0) {
     arts = arts.filter(a => State.activeSources.has(a.source.id));
@@ -210,6 +217,7 @@ function getFiltered() {
 
 function getByCategory(cat) {
   return State.articles.filter(a => {
+    if (EXCLUDED_CATS.has(a.category)) return false;
     if (State.activeSources && !State.activeSources.has(a.source.id)) return false;
     if (State.activeLang !== 'all' && a.source.lang !== State.activeLang) return false;
     return a.category === cat;
@@ -719,7 +727,7 @@ function fullRender() {
 
   // Header + ticker
   updateHeaderStats();
-  renderTicker(State.articles.slice(0, 30));
+  renderTicker(State.articles.filter(a => !EXCLUDED_CATS.has(a.category)).slice(0, 30));
 
   // Footer
   renderFooter();
