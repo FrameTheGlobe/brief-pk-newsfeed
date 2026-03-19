@@ -119,9 +119,22 @@ async function fetchAll() {
   return articles;
 }
 
-// ── Vercel handler ───────────────────────────────────────────────────
+async function getCachedFeeds(options = {}) {
+  const { force = false } = options;
 
-module.exports = async function handler(req, res) {
+  if (!force && _cache && Date.now() - _cacheTs < CACHE_TTL) {
+    return _cache;
+  }
+
+  const articles = await fetchAll();
+  _cache   = articles;
+  _cacheTs = Date.now();
+  return articles;
+}
+
+// ── Vercel / Express handler ─────────────────────────────────────────
+
+async function handler(req, res) {
   // CORS + caching headers
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -132,20 +145,17 @@ module.exports = async function handler(req, res) {
     return res.status(204).end();
   }
 
-  // Serve from warm cache if available (unless force requested)
-  if (!req.query.force && _cache && Date.now() - _cacheTs < CACHE_TTL) {
-    return res.status(200).json(applyFilters(_cache, req.query));
-  }
-
   try {
-    const articles = await fetchAll();
-    _cache   = articles;
-    _cacheTs = Date.now();
+    const articles = await getCachedFeeds({ force: !!req.query?.force });
     return res.status(200).json(applyFilters(articles, req.query));
   } catch (err) {
     console.error('[feeds] Handler error:', err);
     return res.status(500).json({ error: 'Failed to fetch feeds', message: err.message });
   }
-};
+}
+
+module.exports = handler;
+module.exports.getCachedFeeds = getCachedFeeds;
+module.exports.applyFilters   = applyFilters;
 
 

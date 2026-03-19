@@ -1,59 +1,29 @@
 'use strict';
 
-const handler = require('../../api/feeds');
+const { getCachedFeeds, applyFilters } = require('../../api/feeds');
 
 exports.handler = async (event) => {
-  // Simulating Vercel's req/res objects for the handler
-  const req = {
-    method: event.httpMethod,
-    headers: event.headers,
-    query: event.queryStringParameters || {},
-    body: event.body ? (typeof event.body === 'string' ? JSON.parse(event.body) : event.body) : {}
-  };
-  
-  let statusCode = 200;
-  let responseHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Content-Type': 'application/json; charset=utf-8'
-  };
-  let responseBody = '';
-
-  const res = {
-    status: (code) => {
-      statusCode = code;
-      return res;
-    },
-    setHeader: (key, val) => {
-      responseHeaders[key.toLowerCase()] = val;
-      return res;
-    },
-    json: (data) => {
-      responseBody = JSON.stringify(data);
-      return res;
-    },
-    end: (data) => {
-      if (data) responseBody = data;
-      return res;
-    },
-    send: (data) => {
-      responseBody = data;
-      return res;
-    }
-  };
+  const query = event.queryStringParameters || {};
 
   try {
-    await handler(req, res);
+    const articles = await getCachedFeeds({ force: !!query.force });
+    const filtered = applyFilters(articles, query);
+
     return {
-      statusCode,
-      headers: responseHeaders,
-      body: responseBody
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 's-maxage=300, stale-while-revalidate=60'
+      },
+      body: JSON.stringify(filtered)
     };
   } catch (err) {
     console.error('[netlify] feeds error:', err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Internal Server Error', details: err.message })
+      body: JSON.stringify({ error: 'Failed to fetch feeds', details: err.message })
     };
   }
 };

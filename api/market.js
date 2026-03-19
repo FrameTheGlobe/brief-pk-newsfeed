@@ -120,7 +120,7 @@ async function getMarketData() {
 }
 
 // ─── Vercel / Express handler ─────────────────────────────────────────────────
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin',  '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -153,4 +153,8 @@ module.exports = async function handler(req, res) {
       _updated:    new Date().toISOString(),
     });
   }
-};
+}
+
+module.exports = handler;
+module.exports.getMarketData = getMarketData;
+module.exports.STATIC        = STATIC;
