@@ -15,8 +15,17 @@
  *   Vercel CDN cache via Cache-Control header (5 min).
  */
 
-const Parser           = require('rss-parser');
-const SOURCES          = require('../lib/sources');
+const { 
+  clean, 
+  getImage, 
+  truncate, 
+  isRtl, 
+  isPakistanRelevant, 
+  applyFilters 
+} = require('../lib/feed-utils');
+
+const Parser             = require('rss-parser');
+const SOURCES            = require('../lib/sources');
 const { detectCategory } = require('../lib/categorizer');
 
 // ── In-memory warm cache ─────────────────────────────────────────────
@@ -40,95 +49,9 @@ const parser = new Parser({
   },
 });
 
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
-/** Strip HTML tags and decode common entities */
-function clean(str = '') {
-  return str
-    .replace(/<[^>]*>/g, '')
-    .replace(/&amp;/g,  '&')
-    .replace(/&lt;/g,   '<')
-    .replace(/&gt;/g,   '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g,  "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g,    ' ')
-    .trim();
-}
-
-/** Extract first <img> src from HTML string */
-function extractImage(html = '') {
-  const m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return m ? m[1] : null;
-}
-
-/** Resolve best available image from an RSS item */
-function getImage(item) {
-  // rss-parser puts enclosure url here for image enclosures
-  if (item.enclosure?.url && /\.(jpg|jpeg|png|webp|gif)/i.test(item.enclosure.url)) {
-    return item.enclosure.url;
-  }
-  if (item.mediaThumbnail?.['$']?.url) return item.mediaThumbnail['$'].url;
-  if (item.mediaContent?.['$']?.url)   return item.mediaContent['$'].url;
-
-  // Fall back to first <img> in content
-  const html = item['content:encoded'] || item.content || item.summary || '';
-  return extractImage(html);
-}
-
-/** Truncate string to n chars at word boundary */
-function truncate(str = '', n = 160) {
-  const s = clean(str);
-  if (s.length <= n) return s;
-  return s.slice(0, n).replace(/\s\S*$/, '') + '…';
-}
-
-/** Detect RTL / Urdu text */
-function isRtl(str = '') {
-  return /[\u0600-\u06FF\u0750-\u077F]/.test(str);
-}
-
-// Keywords used to filter feeds for Pakistan relevance
-// Applied to ALL sources unless source.pakistanFilter === false
-const PK_KEYWORDS = [
-  // Country
-  'pakistan', 'pakistani', 'pak ',
-  // Major cities
-  'islamabad', 'karachi', 'lahore', 'peshawar', 'quetta', 'rawalpindi',
-  'multan', 'faisalabad', 'hyderabad', 'gujranwala', 'sialkot', 'abbottabad',
-  'swat', 'mardan', 'larkana', 'sukkur', 'gilgit', 'muzaffarabad',
-  // Provinces & territories
-  'balochistan', 'khyber pakhtunkhwa', 'sindh', 'punjab', 'kpk', 'fata',
-  'azad kashmir', 'ajk ', 'gilgit-baltistan', 'gb ',
-  // Key politicians & parties
-  'imran khan', 'shehbaz', 'nawaz sharif', 'maryam nawaz', 'bilawal',
-  'asif zardari', 'fazlur rehman', 'siraj ul haq',
-  'pti', 'pml-n', 'pmln', 'ppp', 'mqm', 'jui-f', 'tehreek-e-insaf',
-  // Government & courts
-  'national assembly', 'senate of pakistan', 'supreme court of pakistan',
-  'lahore high court', 'sindh high court', 'balochistan high court',
-  'election commission of pakistan', 'ecp ', 'govt of pakistan',
-  // Economy & finance
-  'state bank of pakistan', 'sbp', 'kse', 'psx', 'karachi stock',
-  'pak rupee', 'pakistani rupee', 'pkr', 'imf pakistan', 'cpec',
-  'fbr ', 'secp', 'ogra', 'nepra', 'wapda', 'pso ',
-  // Military & security
-  'pakistan army', 'ispr', 'coas', 'isi ', 'dg ispr', 'dg isi',
-  'inter-services', 'pak air force', 'pak navy', 'paf ',
-  'fc balochistan', 'frontier corps', 'rangers', 'ctd ',
-  'ttp ', 'tehrik-i-taliban', 'baloch liberation',
-  // Kashmir & border
-  'kashmir', 'line of control', 'loc ', 'torkham', 'chaman',
-  'durand line', 'pak-afghan', 'pak-iran', 'pak-india', 'pak-china',
-  // Urdu script
-  'پاکستان', 'کراچی', 'لاہور', 'اسلام آباد', 'پشاور', 'کوئٹہ',
-  'وزیراعظم', 'فوج', 'حکومت', 'عمران خان', 'شہباز',
-];
-
-function isPakistanRelevant(title = '', desc = '') {
-  const text = (title + ' ' + desc).toLowerCase();
-  return PK_KEYWORDS.some(kw => text.includes(kw));
-}
 
 // ── Fetch a single source ────────────────────────────────────────────
 
@@ -225,12 +148,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function applyFilters(articles, query = {}) {
-  let result = articles;
 
-  if (query.source)   result = result.filter(a => a.source.id === query.source);
-  if (query.category) result = result.filter(a => a.category.toLowerCase() === query.category.toLowerCase());
-
-  const limit = parseInt(query.limit, 10) || 200;
-  return result.slice(0, limit);
-}

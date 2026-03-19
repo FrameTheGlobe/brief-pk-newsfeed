@@ -60,9 +60,14 @@ const wrapHandler = (handler) => async (req, res) => {
 app.get('/api/feeds', wrapHandler(feedsHandler));
 app.get('/api/market', wrapHandler(marketHandler));
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 brief.pk Local Dev Server\n`);
-  console.log(`Dashboard: http://localhost:${PORT}`);
-  console.log(`API Feeds: http://localhost:${PORT}/api/feeds`);
-  console.log(`API Market: http://localhost:${PORT}/api/market\n`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 brief.pk Local Dev Server\n`);
+    console.log(`Dashboard: http://localhost:${PORT}`);
+    console.log(`API Feeds: http://localhost:${PORT}/api/feeds`);
+    console.log(`API Market: http://localhost:${PORT}/api/market\n`);
+  });
+}
+
+module.exports = app;
+

@@ -1,6 +1,6 @@
 {
   "name": "brief-pk-newsfeed",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "brief.pk — Pakistan Newsfeed Dashboard",
   "private": true,
   "engines": {
@@ -8,16 +8,20 @@
   },
   "scripts": {
     "dev": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest"
   },
   "dependencies": {
     "compression": "^1.8.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "helmet": "^8.1.0",
-    "rss-parser": "^3.13.0"
+    "rss-parser": "^3.13.0",
+    "serverless-http": "^3.2.0"
   },
   "devDependencies": {
+    "jest": "^30.3.0",
+    "supertest": "^7.2.2",
     "vercel": "^32.0.0"
   }
 }

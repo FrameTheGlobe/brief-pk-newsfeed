@@ -1,0 +1,40 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+  command = "echo 'Building...'"
+
+# Enable esbuild for functions
+[functions]
+  node_bundler = "esbuild"
+
+# Redirects map /api calls to the Netlify Function
+[[redirects]]
+  from = "/api/feeds"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/api/market"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+
+# Custom headers for API to mimic Vercel
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, OPTIONS"
+    Cache-Control = "s-maxage=300, stale-while-revalidate=60"
