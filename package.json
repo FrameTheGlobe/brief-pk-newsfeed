@@ -1,6 +1,6 @@
 {
   "name": "brief-pk-newsfeed",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "brief.pk — Pakistan Newsfeed Dashboard",
   "private": true,
   "engines": {
@@ -16,8 +16,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "helmet": "^8.1.0",
-    "rss-parser": "^3.13.0",
-    "serverless-http": "^3.2.0"
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "jest": "^30.3.0",
