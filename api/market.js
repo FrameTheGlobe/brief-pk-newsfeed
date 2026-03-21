@@ -1,6 +1,6 @@
 const MARKET_ENDPOINTS = {
   usdPkr: 'https://open.er-api.com/v6/latest/USD',
-  stooq: 'https://stooq.com/q/l/?s=cl.f,ng.f,xauusd,rb.f&i=d',
+  stooqBase: 'https://stooq.com/q/l/',
   fredBrent: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU',
   yahooChartBase: 'https://query1.finance.yahoo.com/v8/finance/chart',
   yahooSpark: 'https://query1.finance.yahoo.com/v7/finance/spark',
@@ -15,6 +15,13 @@ const YAHOO_COMMODITY_SYMBOLS = {
   gasHenryHub: 'NG=F',
   gold: 'GC=F',
   gasoline: 'RB=F'
+};
+
+const STOOQ_SYMBOLS = {
+  brent: 'cl.f',
+  gasHenryHub: 'ng.f',
+  gold: 'xauusd',
+  gasoline: 'rb.f'
 };
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -136,6 +143,25 @@ function parseFredLatest(csvText) {
   }
 
   return null;
+}
+
+function stooqQuoteUrl(symbol) {
+  return `${MARKET_ENDPOINTS.stooqBase}?s=${encodeURIComponent(symbol)}&i=d`;
+}
+
+function parseStooqQuote(csvText) {
+  const line = String(csvText || '').trim().split(/\r?\n/)[0] || '';
+  const [symbol, date, time, open, high, low, close] = line.split(',');
+  const value = Number(close);
+
+  if (!symbol || !date || !Number.isFinite(value)) return null;
+
+  const candidate = time ? `${date}T${time}Z` : `${date}T00:00:00Z`;
+  const parsed = new Date(candidate);
+  return {
+    value,
+    asOf: Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+  };
 }
 
 function yahooChartUrl(symbol, interval = '5m', range = '1d') {
@@ -310,9 +336,24 @@ function parseAnnouncements(html) {
 
 module.exports = async function handler(req, res) {
   try {
-    const [fxRes, stooqRes, fredBrentRes, psxIndRes, psxPerfRes, yahooRes, psxAnncRes, yahooCommoditySparkRes] = await Promise.allSettled([
+    const [
+      fxRes,
+      stooqBrentRes,
+      stooqGasRes,
+      stooqGoldRes,
+      stooqGasolineRes,
+      fredBrentRes,
+      psxIndRes,
+      psxPerfRes,
+      yahooRes,
+      psxAnncRes,
+      yahooCommoditySparkRes
+    ] = await Promise.allSettled([
       fetchJson(MARKET_ENDPOINTS.usdPkr),
-      fetchText(MARKET_ENDPOINTS.stooq),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.brent)),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gasHenryHub)),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gold)),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gasoline)),
       fetchText(MARKET_ENDPOINTS.fredBrent),
       fetchJson(MARKET_ENDPOINTS.psxIndices),
       fetchText(MARKET_ENDPOINTS.psxPerformers),
@@ -333,7 +374,24 @@ module.exports = async function handler(req, res) {
       if (yData) equities.kse100 = yData;
     }
 
-    const stooq = stooqRes.status === 'fulfilled' && stooqRes.value ? parseStooqCsv(stooqRes.value) : {};
+    const readStooq = (result) => {
+      if (result.status !== 'fulfilled' || !result.value) return { value: null, asOf: null };
+      return parseStooqQuote(result.value) || { value: null, asOf: null };
+    };
+    const stooqBrent = readStooq(stooqBrentRes);
+    const stooqGas = readStooq(stooqGasRes);
+    const stooqGold = readStooq(stooqGoldRes);
+    const stooqGasoline = readStooq(stooqGasolineRes);
+    const stooq = {
+      brent: stooqBrent.value,
+      brentAsOf: stooqBrent.asOf,
+      gasHenryHub: stooqGas.value,
+      gasHenryHubAsOf: stooqGas.asOf,
+      gold: stooqGold.value,
+      goldAsOf: stooqGold.asOf,
+      gasoline: stooqGasoline.value,
+      gasolineAsOf: stooqGasoline.asOf
+    };
     const fredBrent = fredBrentRes.status === 'fulfilled' && fredBrentRes.value
       ? parseFredLatest(fredBrentRes.value)
       : null;
