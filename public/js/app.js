@@ -141,8 +141,11 @@ async function fetchData(forceRefresh = false) {
     fetch('/api/market').then(r => r.ok ? r.json() : Promise.reject(r.status)),
   ]);
 
-  State.articles   = feedsRes.status   === 'fulfilled' ? (feedsRes.value?.articles   || []) : [];
-  State.marketData = marketRes.status  === 'fulfilled' ? (marketRes.value            || null) : null;
+  // /api/feeds returns a plain array; /api/market returns an object
+  const feedsVal   = feedsRes.status  === 'fulfilled' ? feedsRes.value  : null;
+  const marketVal  = marketRes.status === 'fulfilled' ? marketRes.value : null;
+  State.articles   = Array.isArray(feedsVal) ? feedsVal : (feedsVal?.articles || []);
+  State.marketData = marketVal && !Array.isArray(marketVal) ? marketVal : null;
 
   Cache.set(State.articles, State.marketData);
 }
