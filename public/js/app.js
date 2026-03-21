@@ -205,6 +205,7 @@ function renderMarketTicker() {
   const kse = m?.equities?.kse100;
   const usd = m?.fx?.usdPkr;
   const c = m?.commodities || {};
+  const meta = m?.meta || {};
 
   const chips = [];
 
@@ -223,6 +224,13 @@ function renderMarketTicker() {
   chips.push(`<span class="ticker-chip">Gold <strong>$${fmtNum(c.goldUsdPerOz, 2)}</strong></span>`);
   chips.push(`<span class="ticker-chip">LNG Proxy <strong>$${fmtNum(c.lngProxy, 3)}</strong></span>`);
   chips.push(`<span class="ticker-chip">LPG Proxy <strong>$${fmtNum(c.lpgProxy, 3)}</strong></span>`);
+
+  if (meta.commoditiesAsOf) {
+    const pktTime = new Date(meta.commoditiesAsOf).toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Karachi' });
+    const age = Number.isFinite(meta.commoditiesAgeMinutes) ? `${meta.commoditiesAgeMinutes}m old` : 'age unknown';
+    const status = meta.commoditiesStale ? 'STALE' : 'LIVE';
+    chips.push(`<span class="ticker-chip">${status} Commodities <strong>${age}</strong> <span>${pktTime} PKT</span></span>`);
+  }
 
   const html = chips.join('');
   el.innerHTML = html + html;
@@ -264,6 +272,8 @@ function renderHeaderSignals(items) {
   const gasoline = c.gasolineUsdProxy;
   const lng = c.lngProxy;
   const lpg = c.lpgProxy;
+  const commoditiesStale = Boolean(m.meta?.commoditiesStale);
+  const commoditiesAgeMinutes = m.meta?.commoditiesAgeMinutes;
 
   const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
   const items24h = items.filter((i) => new Date(i.publishedAt).getTime() >= oneDayAgo);
@@ -286,10 +296,11 @@ function renderHeaderSignals(items) {
 
   setText('hdrUsdPkr', Number.isFinite(usdPkr) ? fmtNum(usdPkr, 3) : '--');
   setText('hdrKse100', Number.isFinite(kse?.value) ? `${fmtNum(kse.value, 0)} (${chgLabel(kse.changePct)})` : '--');
-  setText('hdrBrent', Number.isFinite(brent) ? `$${fmtNum(brent, 2)}` : '--');
+  setText('hdrBrent', Number.isFinite(brent) ? `$${fmtNum(brent, 2)}${commoditiesStale ? ' (stale)' : ''}` : '--');
   setText('hdrGasoline', Number.isFinite(gasoline) ? `$${fmtNum(gasoline, 3)}` : '--');
   setText('hdrLngLpg', Number.isFinite(lng) && Number.isFinite(lpg) ? `$${fmtNum(lng, 2)} / $${fmtNum(lpg, 2)}` : '--');
-  setText('hdrFuelPressure', Number.isFinite(fuelPressure) ? `${fuelPressure}/100` : '--/100');
+  const fuelPressureLabel = Number.isFinite(fuelPressure) ? `${fuelPressure}/100` : '--/100';
+  setText('hdrFuelPressure', commoditiesStale && Number.isFinite(commoditiesAgeMinutes) ? `${fuelPressureLabel} (${commoditiesAgeMinutes}m)` : fuelPressureLabel);
 
   setText('hdrEnergy24h', `${energy24h}`);
   setText('hdrImf24h', `${imf24h}`);
