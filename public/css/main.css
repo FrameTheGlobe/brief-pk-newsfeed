@@ -845,6 +845,124 @@ body {
 .perf-chg.up { color: var(--accent-green); }
 .perf-chg.down { color: var(--accent-red); }
 
+/* ─── Market Snapshot ────────────────────────── */
+.market-snapshot { padding: 4px 0; }
+
+.mkt-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.mkt-row:last-child { border-bottom: none; }
+
+.mkt-label {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.mkt-val {
+  font-family: var(--mono-font);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  flex: 1;
+}
+
+.mkt-chg {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.mkt-chg.chg-up   { color: var(--accent-green); background: #f0fdf4; }
+.mkt-chg.chg-down { color: var(--accent-red);   background: #fff1f2; }
+.mkt-chg.chg-flat { color: var(--text-muted); }
+
+/* ─── Category Activity Bars ─────────────────── */
+.category-activity { padding: 8px 0; }
+
+.cat-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+}
+
+.cat-bar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  width: 72px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cat-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cat-bar-fill {
+  height: 100%;
+  background: var(--brand-navy);
+  border-radius: 3px;
+  min-width: 4px;
+  transition: width 0.4s ease;
+}
+
+.cat-bar-count {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── Keyword Pills ──────────────────────────── */
+.keyword-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.kw-pill {
+  background: var(--surface-3);
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+}
+
+.kw-pill:hover {
+  background: var(--brand-navy);
+  border-color: var(--brand-navy);
+  color: #ffffff;
+}
+
 
 /* PSX Live Signals Widget */
 .intel-signals-pack {

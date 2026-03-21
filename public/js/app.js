@@ -129,33 +129,25 @@ function renderPsxSignals() {
 
 
 
-function renderFreshnessLadder(items) {
-  const el = document.getElementById('freshnessLadder');
+function renderCategoryActivity(items) {
+  const el = document.getElementById('categoryActivity');
   if (!el) return;
 
-  const ranges = [
-    { label: '0-15m', min: 0, max: 15 },
-    { label: '15-60m', min: 15, max: 60 },
-    { label: '1-3h', min: 60, max: 180 },
-    { label: '3-12h', min: 180, max: 720 },
-    { label: '12h+', min: 720, max: Infinity }
-  ];
+  const counts = aggregateCounts(items, (n) => n.category).slice(0, 8);
+  const max = counts[0]?.[1] || 1;
 
-  const counts = ranges.map((r) => {
-    const c = items.filter((i) => {
-      const age = (Date.now() - new Date(i.publishedAt).getTime()) / 60000;
-      if (!Number.isFinite(age)) return false;
-      return age >= r.min && age < r.max;
-    }).length;
-    return { ...r, count: c };
-  });
-
-  el.innerHTML = counts.map((r) => `
-    <li class="trend-item">
-      <span class="trend-name">${r.label}</span>
-      <span class="trend-meta">${r.count} items</span>
-    </li>
-  `).join('');
+  el.innerHTML = counts.map(([cat, count]) => {
+    const pct = Math.round((count / max) * 100);
+    return `
+      <div class="cat-bar-row">
+        <span class="cat-bar-label">${escapeHtml(cat)}</span>
+        <div class="cat-bar-track">
+          <div class="cat-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <span class="cat-bar-count">${count}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderKeywordSignals(items) {
@@ -175,13 +167,22 @@ function renderKeywordSignals(items) {
     }
   }
 
-  const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
   el.innerHTML = top.map(([k, c]) => `
-    <li class="trend-item">
-      <span class="trend-name">${escapeHtml(k)}</span>
-      <span class="trend-meta">${c} hits</span>
-    </li>
+    <button class="kw-pill" data-kw="${escapeHtml(k)}" title="${c} mentions">${escapeHtml(k)}</button>
   `).join('');
+
+  el.querySelectorAll('.kw-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const kw = btn.dataset.kw;
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.value = kw;
+        state.search = kw;
+        renderAll();
+      }
+    });
+  });
 }
 
 function renderMarketTicker() {
@@ -459,20 +460,29 @@ function renderPopularNews() {
   `).join('');
 }
 
-function renderPerformers() {
-  const gList = document.getElementById('gainersList');
-  const lList = document.getElementById('losersList');
-  if (!gList || !lList || !state.market?.performers) return;
-  const { gainers, losers } = state.market.performers;
-  const mapRow = p => `
-    <li class="perf-row">
-      <span class="perf-sym">${escapeHtml(p.symbol)}</span>
-      <span class="perf-val">${fmtNum(p.price)}</span>
-      <span class="perf-chg ${chgClass(p.change)}">${chgLabel(p.changePct)}</span>
-    </li>
+function renderMarketSnapshot() {
+  const el = document.getElementById('marketSnapshot');
+  if (!el || !state.market) return;
+  const m = state.market;
+  const usdPkr = m?.fx?.usdPkr;
+  const kse = m?.equities?.kse100;
+  const gold = m?.commodities?.goldUsdPerOz;
+  const brent = m?.commodities?.brentUsdPerBbl;
+
+  const row = (label, value, chg, unit = '') => `
+    <div class="mkt-row">
+      <span class="mkt-label">${label}</span>
+      <span class="mkt-val">${unit}${fmtNum(value)}</span>
+      ${chg !== undefined && chg !== null ? `<span class="mkt-chg ${chgClass(chg)}">${chgLabel(chg)}</span>` : ''}
+    </div>
   `;
-  gList.innerHTML = (gainers || []).slice(0, 6).map(mapRow).join('');
-  lList.innerHTML = (losers || []).slice(0, 6).map(mapRow).join('');
+
+  el.innerHTML = [
+    row('USD/PKR', usdPkr, null),
+    row('KSE-100', kse?.value, kse?.changePct),
+    row('Gold', gold, null, '$'),
+    row('Brent', brent, null, '$')
+  ].join('');
 }
 
 function renderAll() {
@@ -486,8 +496,8 @@ function renderAll() {
   renderPopularNews();
   renderTrendRadar(items);
   renderSourceDominance(items);
-  renderPerformers();
-  renderFreshnessLadder(items);
+  renderMarketSnapshot();
+  renderCategoryActivity(items);
   renderKeywordSignals(items);
   renderLiveFeed(items);
   renderLeftRail(items);
