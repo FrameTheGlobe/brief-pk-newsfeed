@@ -256,29 +256,44 @@ function renderFlashTicker(items) {
 
 function renderHeaderSignals(items) {
   const uniqueSources = new Set(items.map((i) => i.source).filter(Boolean)).size;
-  const high = items.filter((i) => i.priority === 'high').length;
-  const medium = items.filter((i) => i.priority === 'medium').length;
-  const security = items.filter((i) => i.category === 'Security' || i.category === 'Geopolitics').length;
-  const energy = items.filter((i) => i.category === 'Energy' || i.category === 'Markets').length;
-  const oneHourAgo = Date.now() - (60 * 60 * 1000);
-  const recent = items.filter((i) => new Date(i.publishedAt).getTime() >= oneHourAgo).length;
+  const m = state.market || {};
+  const c = m.commodities || {};
+  const kse = m.equities?.kse100;
+  const usdPkr = m.fx?.usdPkr;
+  const brent = c.brentUsdPerBbl;
+  const gasoline = c.gasolineUsdProxy;
+  const lng = c.lngProxy;
+  const lpg = c.lpgProxy;
+
+  const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+  const items24h = items.filter((i) => new Date(i.publishedAt).getTime() >= oneDayAgo);
+  const energy24h = items24h.filter((i) => i.category === 'Energy' || i.category === 'Markets').length;
+  const mentionCount = (re) => items24h.filter((i) => re.test(`${i.title} ${i.description}`.toLowerCase())).length;
+  const imf24h = mentionCount(/\bimf\b/);
+  const fuelMentions24h = mentionCount(/\b(petrol|diesel|mogas|hsd)\b/);
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const fuelPressure = Number.isFinite(brent) && Number.isFinite(usdPkr) && Number.isFinite(gasoline)
+    ? Math.round(
+        clamp(((brent - 75) / 25) * 40, 0, 40) +
+        clamp(((usdPkr - 260) / 40) * 35, 0, 35) +
+        clamp(((gasoline - 2.2) / 1.2) * 25, 0, 25)
+      )
+    : null;
 
   setText('headlineCount', `${items.length} headlines`);
   setText('sourceCount', `${uniqueSources} sources`);
-  
-  const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
-  const highRecent = items.filter((i) => i.priority === 'high' && new Date(i.publishedAt).getTime() >= twelveHoursAgo).length;
-  setText('topHighPrio', highRecent.toString());
-  
-  const geoSec = items.filter((i) => i.category === 'Geopolitics' || i.category === 'Security').length;
-  const geoSecPct = Math.round((geoSec / Math.max(1, items.length)) * 100);
-  setText('topGeoSec', `${geoSecPct}% feed`);
 
-  const brent = state.market?.commodities?.brentUsdPerBbl;
+  setText('hdrUsdPkr', Number.isFinite(usdPkr) ? fmtNum(usdPkr, 3) : '--');
+  setText('hdrKse100', Number.isFinite(kse?.value) ? `${fmtNum(kse.value, 0)} (${chgLabel(kse.changePct)})` : '--');
+  setText('hdrBrent', Number.isFinite(brent) ? `$${fmtNum(brent, 2)}` : '--');
+  setText('hdrGasoline', Number.isFinite(gasoline) ? `$${fmtNum(gasoline, 3)}` : '--');
+  setText('hdrLngLpg', Number.isFinite(lng) && Number.isFinite(lpg) ? `$${fmtNum(lng, 2)} / $${fmtNum(lpg, 2)}` : '--');
+  setText('hdrFuelPressure', Number.isFinite(fuelPressure) ? `${fuelPressure}/100` : '--/100');
 
-  const riskScore = (high * 2 + medium) / Math.max(1, items.length);
-
-  // Pulse stats removed, these IDs are deleted in index.html
+  setText('hdrEnergy24h', `${energy24h}`);
+  setText('hdrImf24h', `${imf24h}`);
+  setText('hdrFuelMentions24h', `${fuelMentions24h}`);
 }
 
 function renderBreaking(items) {

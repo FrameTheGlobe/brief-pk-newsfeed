@@ -143,9 +143,11 @@ body {
 }
 
 .macro-stats-grid {
-  display: flex;
-  gap: 28px;
-  padding: 0 20px;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px 12px;
+  padding: 0 16px;
   border-left: 2px solid var(--panel-border);
   border-right: 2px solid var(--panel-border);
 }
@@ -153,7 +155,11 @@ body {
 .stat-blip {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .sb-label {
@@ -166,7 +172,7 @@ body {
 }
 
 .sb-val {
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 700;
   font-family: var(--mono-font);
   color: var(--text-main);
@@ -197,6 +203,35 @@ body {
   border-color: var(--brand-navy);
   color: var(--brand-navy);
   background: var(--surface-3);
+}
+
+@media (max-width: 1360px) {
+  .intel-mainbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .macro-stats-grid {
+    order: 3;
+    width: 100%;
+    border-left: none;
+    border-right: none;
+    border-top: 1px solid var(--panel-border);
+    padding: 12px 0 0;
+  }
+}
+
+@media (max-width: 850px) {
+  .macro-stats-grid {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .macro-stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ─── Tickers ─────────────────────────────────── */
