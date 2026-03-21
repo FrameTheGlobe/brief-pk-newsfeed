@@ -48,26 +48,93 @@ const PAKISTAN_TERMS = [
   'line of control'
 ];
 
+const PAKISTAN_ENTITY_TERMS = [
+  'sbp',
+  'state bank',
+  'fbr',
+  'secp',
+  'nepra',
+  'ogra',
+  'ispr',
+  'ndma',
+  'ecc',
+  'finance ministry',
+  'economic coordination committee',
+  'pmo',
+  'prime minister office',
+  'national assembly',
+  'senate of pakistan',
+  'psx',
+  'kse-100',
+  'kse100'
+];
+
+const NOISE_TERMS = [
+  'celebrity',
+  'showbiz',
+  'entertainment',
+  'movie',
+  'film',
+  'actor',
+  'actress',
+  'trailer',
+  'box office',
+  'fashion',
+  'lifestyle',
+  'gossip',
+  'cricket highlights',
+  'football highlights'
+];
+
 function getCategory(text) {
   const t = text.toLowerCase();
-  if (/(election|cabinet|prime minister|parliament|pti|pmln|ppp|assembly|senate)/.test(t)) return 'Politics';
-  if (/(inflation|interest rate|gdp|budget|trade|tax|fbr|economy|rupee|exports|imports|imf)/.test(t)) return 'Economy';
-  if (/(security|terror|military|army|air force|navy|border|isi|attack|police)/.test(t)) return 'Security';
-  if (/(oil|gas|lng|lpg|petrol|diesel|energy|power|electricity|solar|ipps)/.test(t)) return 'Energy';
-  if (/(market|stocks|kse|psx|bank|business|corporate|earnings)/.test(t)) return 'Markets';
-  if (/(diplomacy|foreign|india|china|afghanistan|iran|saudi|uae|us|regional)/.test(t)) return 'Geopolitics';
-  if (/(court|supreme court|constitutional|judiciary|chief justice|verdict)/.test(t)) return 'Justice';
-  if (/(federal|province|balochistan|sindh|punjab|kp|khyber pakhtunkhwa|gb|ajk)/.test(t)) return 'Governance';
-  if (/(health|hospital|disease|dengue|polio|education|school|university)/.test(t)) return 'Society';
-  if (/(flood|climate|water|heatwave|earthquake|weather)/.test(t)) return 'Environment';
+  if (/\b(election|cabinet|prime minister|parliament|pti|pmln|ppp|assembly|senate)\b/.test(t)) return 'Politics';
+  if (/\b(inflation|interest rates?|gdp|budget|trade|tax|fbr|economy|rupee|exports?|imports?|imf)\b/.test(t)) return 'Economy';
+  if (/\b(security|terror|military|army|air force|navy|border|isi|attack|police)\b/.test(t)) return 'Security';
+  if (/\b(oil|gas|lng|lpg|petrol|diesel|energy|power|electricity|solar|ipps)\b/.test(t)) return 'Energy';
+  if (/\b(market|stocks?|kse|psx|bank|business|corporate|earnings)\b/.test(t)) return 'Markets';
+  if (/\b(diplomacy|foreign|india|china|afghanistan|iran|saudi|uae|usa|u\.s\.|united states|regional)\b/.test(t)) return 'Geopolitics';
+  if (/\b(court|supreme court|constitutional|judiciary|chief justice|verdict)\b/.test(t)) return 'Justice';
+  if (/\b(federal|province|balochistan|sindh|punjab|kp|khyber pakhtunkhwa|gb|ajk)\b/.test(t)) return 'Governance';
+  if (/\b(health|hospital|disease|dengue|polio|education|school|university)\b/.test(t)) return 'Society';
+  if (/\b(flood|climate|water|heatwave|earthquake|weather)\b/.test(t)) return 'Environment';
   return 'General';
 }
 
 function getPriority(text) {
   const t = text.toLowerCase();
-  if (/(breaking|urgent|explosion|attack|war|default|imf|devaluation|emergency)/.test(t)) return 'high';
-  if (/(cabinet|policy|budget|inflation|market|security|energy|election|court|rates|rupee|border|ceasefire)/.test(t)) return 'medium';
+  if (/\b(breaking|urgent|explosion|attack|war|default|imf|devaluation|emergency)\b/.test(t)) return 'high';
+  if (/\b(cabinet|policy|budget|inflation|market|security|energy|election|court|rates?|rupee|border|ceasefire)\b/.test(t)) return 'medium';
   return 'normal';
+}
+
+function containsAny(text, terms) {
+  return terms.some((term) => text.includes(term));
+}
+
+function computeRelevance(article, combinedText, hasDirectPakistanSignal) {
+  let score = 0;
+
+  if (hasDirectPakistanSignal) score += 4;
+  if (article.scope === 'internal') score += 3;
+  if (article.sourceTier === 'core') score += 2;
+  else if (article.sourceTier === 'context') score -= 1;
+
+  if (article.priority === 'high') score += 2;
+  else if (article.priority === 'medium') score += 1;
+
+  if (article.category === 'Economy' || article.category === 'Security' || article.category === 'Governance') score += 2;
+  if (article.category === 'Politics' || article.category === 'Markets' || article.category === 'Geopolitics') score += 1;
+
+  const ageHours = (Date.now() - new Date(article.publishedAt).getTime()) / 3_600_000;
+  if (Number.isFinite(ageHours)) {
+    if (ageHours <= 6) score += 2;
+    else if (ageHours <= 24) score += 1;
+  }
+
+  if (containsAny(combinedText, NOISE_TERMS)) score -= 4;
+
+  return score;
 }
 
 function cleanHtml(s) {
@@ -137,7 +204,9 @@ function parseFeed(xml, feed) {
     if (!title || !link) continue;
 
     const combined = `${title} ${description}`.toLowerCase();
-    const hasPakistanSignal = feed.scope === 'internal' || PAKISTAN_TERMS.some((term) => combined.includes(term));
+    const hasDirectPakistanSignal =
+      containsAny(combined, PAKISTAN_TERMS) || containsAny(combined, PAKISTAN_ENTITY_TERMS);
+    const hasPakistanSignal = feed.scope === 'internal' || hasDirectPakistanSignal;
     if (!hasPakistanSignal) continue;
 
     let publishedAt = null;
@@ -146,7 +215,7 @@ function parseFeed(xml, feed) {
       if (!Number.isNaN(parsed.getTime())) publishedAt = parsed.toISOString();
     }
 
-    out.push({
+    const article = {
       id: `${feed.name}-${link}`,
       title,
       description,
@@ -154,10 +223,19 @@ function parseFeed(xml, feed) {
       thumbnail: extractImage(block),
       source: feed.name,
       scope: feed.scope,
+      sourceTier: feed.scope === 'internal' ? 'core' : 'context',
+      directPakistanSignal: hasDirectPakistanSignal,
       category: getCategory(combined),
       priority: getPriority(combined),
       publishedAt: publishedAt || new Date().toISOString()
-    });
+    };
+
+    article.relevanceScore = computeRelevance(article, combined, hasDirectPakistanSignal);
+
+    if (article.relevanceScore < 3) continue;
+    if (containsAny(combined, NOISE_TERMS) && article.relevanceScore < 7) continue;
+
+    out.push(article);
   }
   return out;
 }
@@ -196,13 +274,33 @@ module.exports = async function handler(req, res) {
     const dedup = new Map();
     for (const article of merged) {
       const key = article.url || article.title;
-      if (!dedup.has(key)) dedup.set(key, article);
+      const existing = dedup.get(key);
+      if (!existing) {
+        dedup.set(key, article);
+        continue;
+      }
+
+      const scoreDiff = (article.relevanceScore || 0) - (existing.relevanceScore || 0);
+      if (scoreDiff > 0) {
+        dedup.set(key, article);
+        continue;
+      }
+
+      if (scoreDiff === 0) {
+        const articleTs = new Date(article.publishedAt).getTime();
+        const existingTs = new Date(existing.publishedAt).getTime();
+        if (articleTs > existingTs) dedup.set(key, article);
+      }
     }
 
     const articles = [...dedup.values()].sort((a, b) => {
+      const byRelevance = (b.relevanceScore || 0) - (a.relevanceScore || 0);
+      if (byRelevance !== 0) return byRelevance;
+
       const byPriority = (p) => (p === 'high' ? 3 : p === 'medium' ? 2 : 1);
-      const d = byPriority(b.priority) - byPriority(a.priority);
-      if (d !== 0) return d;
+      const byPriorityDelta = byPriority(b.priority) - byPriority(a.priority);
+      if (byPriorityDelta !== 0) return byPriorityDelta;
+
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
 

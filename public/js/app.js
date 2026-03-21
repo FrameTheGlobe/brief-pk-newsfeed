@@ -13,7 +13,8 @@ const state = {
   updatedAt: null,
   news: [],
   market: null,
-  scope: 'all',
+  scope: 'internal',
+  strictFocus: true,
   search: '',
   popPeriod: 'today'
 };
@@ -85,6 +86,11 @@ function updateClock() {
 
 function filteredNews() {
   return state.news.filter((item) => {
+    if (state.strictFocus) {
+      if ((item.relevanceScore || 0) < 7) return false;
+      if (item.scope === 'external' && !item.directPakistanSignal) return false;
+    }
+
     if (state.scope !== 'all' && item.scope !== state.scope) return false;
     if (!state.search) return true;
     const hay = `${item.title} ${item.description} ${item.source} ${item.category}`.toLowerCase();
@@ -546,6 +552,15 @@ function bindEvents() {
       renderAll();
     });
   });
+
+  const focusToggle = document.getElementById('focusModeToggle');
+  if (focusToggle) {
+    focusToggle.checked = state.strictFocus;
+    focusToggle.addEventListener('change', (e) => {
+      state.strictFocus = Boolean(e.target.checked);
+      renderAll();
+    });
+  }
 
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
