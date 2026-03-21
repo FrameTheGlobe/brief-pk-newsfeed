@@ -27,7 +27,6 @@
 ═══════════════════════════════════════════════ -->
 <div class="market-bar" id="marketBar">
   <div class="market-track" id="marketTrack">
-    <!-- Injected by JS -->
     <span class="m-item">Intelligence Loading...</span>
   </div>
 </div>
@@ -104,7 +103,6 @@
 <!-- ═══════════════════════════════════════════════
      APP SHELL
 ═══════════════════════════════════════════════ -->
-<!-- Sidebar dimmer overlay (outside grid so it doesn't disrupt app-shell columns) -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <div class="app-shell" id="appShell">
@@ -143,16 +141,39 @@
   <!-- MAIN NEWS TERMINAL -->
   <main class="main-content" id="mainContent">
 
-    <section class="briefing-intro" aria-label="Briefing overview">
-      <div class="briefing-kicker">Pakistan Brief</div>
-      <h1 class="briefing-title">Pakistan Intelligence Dashboard — internal and external signal tracking in one live command view.</h1>
+    <!-- ── COMMAND STRIP (replaces the old hero text box) ── -->
+    <div class="command-strip">
+      <div class="command-strip-left">
+        <div class="live-dot sm" style="background:var(--red);animation:blink 1.3s ease-in-out infinite;"></div>
+        <span class="command-strip-label">PAKISTAN INTEL</span>
+        <span class="command-strip-stat"><span id="cmdStatCount">—</span> reports · <span id="cmdStatSources">—</span> sources</span>
+      </div>
       <div class="scope-switch" id="scopeSwitch" aria-label="Pakistan scope filters">
         <button class="scope-btn active" data-scope="all">All Pakistan</button>
         <button class="scope-btn" data-scope="internal">Internal</button>
         <button class="scope-btn" data-scope="external">External</button>
       </div>
+      <div class="command-strip-right" id="cmdUpdatedAt">—</div>
+    </div>
+
+    <!-- ── MARKET PULSE — HERO WIDGET (immediately visible) ── -->
+    <section class="panel-block terminal-widget prominent market-hero" id="marketSection">
+      <div class="panel-header dark">
+        <div style="display:flex;align-items:center;">
+          <div class="live-blinker"></div>
+          <span class="panel-title">Market Pulse</span>
+        </div>
+        <span style="font-size:9px;opacity:0.5;font-family:var(--font-data);color:var(--cyan);">PKR · FX · EQUITIES · COMMODITIES · ESSENTIALS</span>
+      </div>
+      <div class="market-widget-prominent" id="marketWidgetContainer">
+        <!-- skeleton while loading -->
+        <div class="mw-headline-strip" style="background:var(--navy);padding:14px 16px;">
+          <div class="skel" style="height:36px;width:100%;background:rgba(255,255,255,0.06);border-radius:4px;"></div>
+        </div>
+      </div>
     </section>
 
+    <!-- ── INTEL WIDGETS (breaking queue + trend radar + source dominance) ── -->
     <section class="intel-widget-grid" aria-label="Live dashboard widgets">
       <article class="widget-card">
         <div class="widget-head">
@@ -178,11 +199,14 @@
         <div class="source-breakdown" id="sourceBreakdown"></div>
       </article>
     </section>
-    
+
+    <!-- ── DASHBOARD GRID ── -->
     <div class="dashboard-grid">
-      
-      <!-- PRIMARY EDITORIAL (NYT STYLE) -->
+
+      <!-- PRIMARY EDITORIAL COLUMN -->
       <div class="editorial-col">
+
+        <!-- Breaking Focus -->
         <section class="panel-block breaking-panel" id="breakingPanel">
           <div class="panel-header dark">
             <div style="display:flex;align-items:center;">
@@ -194,36 +218,7 @@
           <div class="breaking-deck" id="breakingDeck"></div>
         </section>
 
-        <section class="dg-hero panel-block" id="heroSection">
-          <div class="panel-header">
-            <span class="panel-title" id="lblHeroTitle">Top Stories</span>
-            <span class="section-updated" id="heroUpdated"></span>
-          </div>
-          <div class="hero-grid-wrapper">
-            <div class="hero-grid" id="heroGrid">
-              <div class="skel" style="height:380px; width:100%"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ═══════════════════════════════════════════════
-             INTELLIGENCE DASHBOARD (CENTER PROMINENT)
-             ═══════════════════════════════════════════════ -->
-        <div class="intel-dashboard-grid" id="intelDashboard">
-          
-          <section class="panel-block terminal-widget prominent" id="marketSection">
-            <div class="panel-header dark">
-              <div style="display:flex;align-items:center;">
-                <div class="live-blinker"></div>
-                <span class="panel-title" id="lblMarketTitle">Market Pulse</span>
-              </div>
-              <span style="font-size:9px;opacity:0.5;font-family:var(--font-data);color:var(--cyan);">FX · EQUITIES · ESSENTIALS</span>
-            </div>
-            <div class="market-widget-prominent" id="marketWidgetContainer"></div>
-          </section>
-        </div>
-
-        <!-- Dynamic Category Sections -->
+        <!-- Dynamic Category Sections (compact card list) -->
         <div id="categorySections"></div>
 
         <!-- Load More -->
@@ -272,9 +267,7 @@
 
 <button class="fab" id="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
-<!-- ═══════════════════════════════════════════════
-     MOBILE BOTTOM NAV
-═══════════════════════════════════════════════ -->
+<!-- MOBILE BOTTOM NAV -->
 <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation">
   <button class="mnav-btn" id="mnavFeed" onclick="App.filterCategory('All')">
     <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>

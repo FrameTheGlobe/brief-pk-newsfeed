@@ -392,6 +392,29 @@ function buildSideCard(article) {
     </a>`;
 }
 
+/* ── Compact text card (FrameTheGlobe-style dense list) ── */
+function buildCompactCard(article) {
+  const scope    = getScopeByCategory(article.category);
+  const priority = getPriority(article);
+  const brk      = isBreaking(article.pubDate);
+
+  return `
+    <a class="compact-card scope-${scope}" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
+      <div class="cc-tags">
+        <span class="cc-cat">${escHtml(article.category)}</span>
+        <span class="cc-scope scope-${scope}">${scope === 'external' ? 'EXT' : 'INT'}</span>
+        <span class="cc-priority p-${priority}">${priority.toUpperCase()}</span>
+        ${brk ? '<span class="cc-breaking">BREAKING</span>' : ''}
+      </div>
+      <div class="cc-headline${article.rtl ? ' rtl' : ''}">${escHtml(article.title)}</div>
+      <div class="cc-footer">
+        <span class="cc-source">${escHtml(article.source.name)}</span>
+        <span class="cc-dot">·</span>
+        <span>${timeAgo(article.pubDate)}</span>
+      </div>
+    </a>`;
+}
+
 /* ── Regular news card ──────────────────────── */
 function buildNewsCard(article) {
   const scope = getScopeByCategory(article.category);
@@ -444,18 +467,18 @@ function renderCategorySection(cat, articles) {
   if (!articles.length) return '';
   const cc      = getCatColor(cat);
   const visible = articles.slice(0, SECTION_COUNT);
-  const label   = State.activeLang === 'ur' ? (State.activeLang === 'ur' ? escHtml(cat) : escHtml(cat)) : escHtml(cat); 
+  const label   = escHtml(cat);
 
   return `
-    <section class="panel-block" id="section-${cat.toLowerCase().replace(/\s+/g, '-')}" style="border-top:3px solid ${cc};">
-      <div class="panel-header">
-        <h2 class="panel-title" style="font-size:13px;letter-spacing:0.04em;color:${cc};">${label}</h2>
-        <a class="section-header-link" href="#" onclick="App.filterCategory('${escHtml(cat)}');return false;">
-          All ${label} →
-        </a>
+    <section class="compact-section" id="section-${cat.toLowerCase().replace(/\s+/g, '-')}" style="border-top:3px solid ${cc};">
+      <div class="compact-section-header">
+        <span class="compact-section-title" style="color:${cc};">${label}</span>
+        <button class="compact-section-link" onclick="App.filterCategory('${escHtml(cat)}')">
+          All ${visible.length}+ →
+        </button>
       </div>
-      <div class="cards-row">
-        ${visible.map(buildNewsCard).join('')}
+      <div class="compact-cards-grid">
+        ${visible.map(buildCompactCard).join('')}
       </div>
     </section>`;
 }
@@ -474,9 +497,7 @@ function renderAllSections(articles) {
     return;
   }
 
-  // All mode: hero + per-category sections
-  renderHero(articles.slice(0, 6));
-
+  // All mode: compact per-category sections (no hero box)
   const sections = CATEGORIES.filter(c => c !== 'All').map(cat => {
     const catArts = getByCategory(cat);
     return renderCategorySection(cat, catArts);
@@ -488,41 +509,35 @@ function renderAllSections(articles) {
 
 function renderSingleCategory(articles) {
   const container = document.getElementById('categorySections');
-  const heroSection = document.getElementById('heroSection');
-  if (heroSection) heroSection.style.display = 'none';
-
   const cc = getCatColor(State.activeCategory);
 
   container.innerHTML = `
-    <section class="panel-block" style="border-top:3px solid ${cc};">
-      <div class="panel-header">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <h2 class="panel-title" style="font-size:13px;color:${cc};">${escHtml(State.activeCategory)}</h2>
-          <span style="font-size:10px; font-weight:600; color:var(--text-4); font-family:var(--font-data);">${articles.length} reports</span>
+    <section class="compact-section" style="border-top:3px solid ${cc};">
+      <div class="compact-section-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="compact-section-title" style="color:${cc};">${escHtml(State.activeCategory)}</span>
+          <span style="font-family:var(--font-data);font-size:9px;color:var(--text-4);">${articles.length} REPORTS</span>
         </div>
-        <button class="section-header-link" style="background:none; border:none;" onclick="App.filterCategory('All')">← Back</button>
+        <button class="compact-section-link" onclick="App.filterCategory('All')">← Back</button>
       </div>
-      <div class="cards-row">
-        ${articles.map(buildNewsCard).join('') || '<div class="empty-state"><h3>No stories in this topic yet</h3></div>'}
+      <div class="compact-cards-grid">
+        ${articles.map(buildCompactCard).join('') || '<div class="empty-state" style="grid-column:1/-1"><h3>No stories in this topic yet</h3></div>'}
       </div>
     </section>`;
 }
 
 function renderSearchResults(articles) {
-  const heroSection = document.getElementById('heroSection');
-  if (heroSection) heroSection.style.display = 'none';
-
   const container = document.getElementById('categorySections');
   container.innerHTML = `
-    <section class="panel-block editorial-col" style="margin-top:0;">
-      <div class="panel-header" style="background:var(--accent)">
-        <span class="panel-title">Search: Found ${articles.length} Stories</span>
-        <button class="btn-refresh" style="background:rgba(255,255,255,0.2);margin:-8px;" onclick="App.clearSearch()">✕ CLEAR</button>
+    <section class="compact-section" style="border-top:3px solid var(--red);">
+      <div class="compact-section-header">
+        <span class="compact-section-title" style="color:var(--red);">Search — ${articles.length} results</span>
+        <button class="compact-section-link" onclick="App.clearSearch()">✕ Clear</button>
       </div>
-      <div class="cards-row" style="padding:24px;">
+      <div class="compact-cards-grid">
         ${articles.length
-          ? articles.map(buildNewsCard).join('')
-          : `<div class="empty-state"><h3>No results found</h3><p>Try a different keyword.</p></div>`
+          ? articles.map(buildCompactCard).join('')
+          : `<div class="empty-state" style="grid-column:1/-1"><h3>No results found</h3><p>Try a different keyword.</p></div>`
         }
       </div>
     </section>`;
@@ -832,9 +847,21 @@ function updateHeaderStats() {
   const updatedAt = document.getElementById('headerUpdatedAt');
   if (!count || !sources) return;
 
-  count.textContent   = State.articles.length;
+  const articleCount  = State.articles.length;
   const uniqueSources = new Set(State.articles.map(a => a.source.id)).size;
+
+  count.textContent   = articleCount;
   sources.textContent = uniqueSources;
+
+  // Sync command strip stats
+  const cmdCount   = document.getElementById('cmdStatCount');
+  const cmdSources = document.getElementById('cmdStatSources');
+  const cmdUpdated = document.getElementById('cmdUpdatedAt');
+  if (cmdCount)   cmdCount.textContent   = articleCount;
+  if (cmdSources) cmdSources.textContent = uniqueSources;
+  if (cmdUpdated) cmdUpdated.textContent = State.lastFetch
+    ? `Updated ${timeAgo(new Date(State.lastFetch).toISOString())}`
+    : 'syncing…';
 
   if (scopeChip) {
     const scopeLabel = State.activeScope === 'all'
@@ -888,12 +915,15 @@ function fullRender() {
   const filtered = getFiltered();
   const isDashboardMode = (State.activeCategory === 'All' && !State.searchQuery);
 
-  // Dashboard Grid Toggle
+  // Dashboard Grid Toggle — hide right rail and widgets in search/filter mode
   const grid = document.querySelector('.dashboard-grid');
   if (grid) grid.style.display = isDashboardMode ? '' : 'none';
 
-  const intelDash = document.getElementById('intelDashboard');
-  if (intelDash) intelDash.style.display = isDashboardMode ? 'grid' : 'none';
+  // Market hero and intel widgets always visible
+  const marketHero = document.getElementById('marketSection');
+  if (marketHero) marketHero.style.display = '';
+  const intelWidgets = document.querySelector('.intel-widget-grid');
+  if (intelWidgets) intelWidgets.style.display = isDashboardMode ? '' : 'none';
 
   // Main sections
   renderAllSections(filtered);
