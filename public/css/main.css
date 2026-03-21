@@ -399,16 +399,18 @@ body {
 .rail-label, .widget-head, .lane-head {
   background: var(--surface-2);
   border-bottom: 1px solid var(--panel-border);
+  border-left: 3px solid var(--brand-red);
   padding: 10px 16px;
   font-family: var(--mono-font);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--brand-navy);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .lane-head {
@@ -418,27 +420,42 @@ body {
 
 .lane-head h2 {
   margin: 0;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--brand-navy);
   font-family: var(--mono-font);
 }
 
+.lane-head-badge {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-3);
+  border: 1px solid var(--panel-border);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .category-head {
-  padding: 14px 18px;
+  padding: 11px 18px;
   background: var(--surface-2);
-  border-bottom: 2px solid var(--panel-border);
+  border-bottom: 1px solid var(--panel-border);
+  border-left: 3px solid var(--brand-red);
   font-family: var(--mono-font);
   font-size: 11px;
   text-transform: uppercase;
-  color: var(--text-main);
-  letter-spacing: 0.12em;
+  color: var(--brand-navy);
+  letter-spacing: 0.1em;
   font-weight: 800;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .category-head span:last-child {
@@ -593,6 +610,8 @@ body {
 
 .large-tv-card, .ai-stats-card {
   height: 420px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* PSX Signals Matrix */
@@ -600,7 +619,7 @@ body {
   flex: 1;
   overflow-y: auto;
   font-family: var(--mono-font);
-  max-height: 360px;
+  min-height: 0;
 }
 
 .intel-signals-pack::-webkit-scrollbar { width: 4px; }
