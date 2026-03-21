@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="brief. Pakistan Intelligence Dashboard" />
+  <title>brief. | Pakistan Intelligence Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <header class="intel-header">
+    <div class="intel-topline">
+      <div class="intel-topline-group">
+        <span class="top-pill">Live Intelligence</span>
+        <span class="top-sep">|</span>
+        <span class="top-meta" id="headlineCount">-- headlines</span>
+        <span class="top-meta" id="sourceCount">-- sources</span>
+        <span class="top-meta">DB: SYNCED</span>
+        <span class="top-meta">Nodes: 4 Active</span>
+      </div>
+      <div class="top-clock" id="headerClock">--:--:--</div>
+    </div>
+
+    <div class="intel-mainbar">
+      <div class="brand-lockup">
+        <h1 class="brand-title">
+          <span class="brand-word">brief<span class="brand-dot">.pk</span></span>
+          <span class="brand-suffix">Dashboard</span>
+        </h1>
+      </div>
+
+      <div class="macro-stats-grid">
+        <div class="stat-blip">
+          <span class="sb-label">Priority (12h)</span>
+          <span class="sb-val" id="topHighPrio">--</span>
+        </div>
+        <div class="stat-blip">
+          <span class="sb-label">Geopolitics / Security</span>
+          <span class="sb-val" id="topGeoSec">--% feed</span>
+        </div>
+        <div class="stat-blip">
+          <span class="sb-label">Market Vitality</span>
+          <span class="sb-val" id="marketVitality">Optimal</span>
+        </div>
+        <div class="stat-blip">
+          <span class="sb-label">Risk Index</span>
+          <span class="sb-val" style="color:var(--accent-amber)">Moderate</span>
+        </div>
+      </div>
+
+      <div class="header-social-links">
+        <a href="https://x.com/brief_pk" target="_blank">@brief_pk</a>
+        <a href="https://brief.pk" target="_blank">Substack</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="ticker-stack">
+    <section class="market-ticker-wrap">
+      <div class="ticker-title">Markets + Commodities</div>
+      <div class="ticker-viewport" id="marketTickerViewport">
+        <div class="ticker-track" id="marketTickerTrack">
+          <span class="ticker-chip">Loading open market feeds...</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="flash-ticker-wrap">
+      <div class="flash-title">Flash</div>
+      <div class="flash-viewport" id="flashTickerViewport">
+        <div class="flash-track" id="flashTickerTrack">
+          <span class="flash-item">Loading Pakistan news feeds...</span>
+        </div>
+      </div>
+      <button class="refresh-btn" id="refreshBtn" type="button">Refresh</button>
+    </section>
+  </section>
+
+  <section class="tv-charts-strip">
+    <div class="tv-widget-card">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {
+          "symbol": "CAPITALCOM:DXY",
+          "width": "100%",
+          "height": "100%",
+          "locale": "en",
+          "dateRange": "1M",
+          "colorTheme": "light",
+          "isTransparent": true,
+          "autosize": true,
+          "largeChartUrl": "",
+          "show_popup_button": false,
+          "enable_publishing": false
+        }
+        </script>
+      </div>
+    </div>
+    <div class="tv-widget-card">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {
+          "symbol": "FX_IDC:USDPKR",
+          "width": "100%",
+          "height": "100%",
+          "locale": "en",
+          "dateRange": "1M",
+          "colorTheme": "light",
+          "isTransparent": true,
+          "autosize": true,
+          "largeChartUrl": "",
+          "show_popup_button": false,
+          "enable_publishing": false
+        }
+        </script>
+      </div>
+    </div>
+    <div class="tv-widget-card">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {
+          "symbol": "OANDA:BCOUSD",
+          "width": "100%",
+          "height": "100%",
+          "locale": "en",
+          "dateRange": "1M",
+          "colorTheme": "light",
+          "isTransparent": true,
+          "autosize": true,
+          "largeChartUrl": "",
+          "show_popup_button": false,
+          "enable_publishing": false
+        }
+        </script>
+      </div>
+    </div>
+    <div class="tv-widget-card">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {
+          "symbol": "OANDA:XAUUSD",
+          "width": "100%",
+          "height": "100%",
+          "locale": "en",
+          "dateRange": "1M",
+          "colorTheme": "light",
+          "isTransparent": true,
+          "autosize": true,
+          "largeChartUrl": "",
+          "show_popup_button": false,
+          "enable_publishing": false
+        }
+        </script>
+      </div>
+    </div>
+  </section>
+
+  <main class="dashboard-shell">
+    <aside class="left-rail">
+      <div class="rail-block">
+        <div class="rail-label">Scope</div>
+        <div class="scope-switch" id="scopeSwitch">
+          <button class="scope-btn active" data-scope="all">All</button>
+          <button class="scope-btn" data-scope="internal">Internal</button>
+          <button class="scope-btn" data-scope="external">External</button>
+        </div>
+      </div>
+
+      <div class="rail-block">
+        <div class="rail-label">Search</div>
+        <input id="searchInput" class="search-input" placeholder="topics, source, category" />
+      </div>
+
+      <div class="rail-block popular-widget">
+        <div class="rail-label">Most Popular</div>
+        <div class="popular-tabs">
+          <button class="pop-tab active" data-period="today">Today</button>
+          <button class="pop-tab" data-period="yesterday">Yesterday</button>
+          <button class="pop-tab" data-period="3d">3D</button>
+        </div>
+        <div id="popularNews" class="popular-list"></div>
+      </div>
+
+      <div class="rail-block">
+        <div class="rail-label">Categories</div>
+        <ul class="nav-list" id="categoryNav"></ul>
+      </div>
+
+      <div class="rail-block">
+        <div class="rail-label">Sources</div>
+        <ul class="nav-list" id="sourceNav"></ul>
+      </div>
+    </aside>
+
+    <section class="main-lane">
+      <section class="interactive-tv-grid">
+        <article class="large-tv-card">
+          <div class="tradingview-widget-container" style="height:100%;width:100%">
+            <div id="tradingview_kse100" style="height:100%;width:100%"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+            <script type="text/javascript">
+            new TradingView.widget({
+              "autosize": true,
+              "symbol": "FX_IDC:USDPKR",
+              "interval": "D",
+              "timezone": "Asia/Karachi",
+              "theme": "light",
+              "style": "2",
+              "locale": "en",
+              "enable_publishing": false,
+              "hide_top_toolbar": true,
+              "hide_side_toolbar": true,
+              "hide_legend": true,
+              "save_image": false,
+              "container_id": "tradingview_kse100",
+              "show_popup_button": false,
+              "enable_publishing": false
+            });
+            </script>
+          </div>
+        </article>
+        <article class="ai-stats-card">
+          <div class="lane-head"><h2>PSX Live Signal Matrix</h2></div>
+          <div id="psxSignals" class="intel-signals-pack"></div>
+        </article>
+      </section>
+
+      <div class="lane-block">
+        <div class="lane-head">
+          <h2>Breaking Queue</h2>
+          <span id="updatedAt">--</span>
+        </div>
+        <div id="breakingQueue" class="breaking-queue"></div>
+      </div>
+
+      <div id="categorySections" class="category-sections"></div>
+    </section>
+
+    <aside class="right-rail">
+      <div class="rail-widget">
+        <div class="widget-head">Trend Radar</div>
+        <ul id="trendRadar" class="widget-list"></ul>
+      </div>
+
+      <div class="rail-widget">
+        <div class="widget-head">Source Dominance</div>
+        <div id="sourceDominance" class="source-dominance"></div>
+      </div>
+
+      <div class="rail-widget">
+        <div class="widget-head">Performers (Gainers)</div>
+        <ul id="gainersList" class="widget-list perf-list"></ul>
+      </div>
+
+      <div class="rail-widget">
+        <div class="widget-head">Performers (Losers)</div>
+        <ul id="losersList" class="widget-list perf-list"></ul>
+      </div>
+
+      <div class="rail-widget">
+        <div class="widget-head">Live Feed</div>
+        <ul id="liveFeed" class="live-feed"></ul>
+      </div>
+
+      <div class="rail-widget">
+        <div class="widget-head">Freshness Ladder</div>
+        <ul id="freshnessLadder" class="widget-list"></ul>
+      </div>
+
+      <div class="rail-widget">
+        <div class="widget-head">Keyword Signals</div>
+        <ul id="keywordSignals" class="widget-list"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/js/app.js" defer></script>
+</body>
+</html>

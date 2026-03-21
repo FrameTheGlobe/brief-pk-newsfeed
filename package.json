@@ -1,0 +1,17 @@
+{
+  "name": "brief-pk-newsfeed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pakistan Intelligence Dashboard with open-feed aggregation",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo \"No build step required\"",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "vercel": "^48.6.0"
+  }
+}
