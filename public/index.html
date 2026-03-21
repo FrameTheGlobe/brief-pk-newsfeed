@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="brief.pk — Pakistan Newsfeed. Live incubator for politics, economy, and regional security.">
+  <meta name="description" content="brief.pk — Pakistan News Intelligence. Ultra-dense live briefing: politics, economy, markets, and regional security.">
   <meta name="theme-color" content="#0D2B3E">
-  <title>brief.pk | Pakistan Briefing</title>
+  <title>brief.pk | Pakistan Intelligence Briefing</title>
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="/img/favicon.png">
@@ -14,36 +14,45 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&family=Playfair+Display:wght@700;800;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <!-- Styles -->
   <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
+
+<!-- SCROLL PROGRESS -->
 <div class="scroll-progress" id="scrollProgress"></div>
 
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loader-ring"></div>
+  <div class="loader-text">FETCHING PAKISTAN INTEL…</div>
+</div>
+
 <!-- ═══════════════════════════════════════════════
-     MARKET BAR (Bloomberg style)
+     MARKET BAR — thin top scrolling ticker
 ═══════════════════════════════════════════════ -->
 <div class="market-bar" id="marketBar">
   <div class="market-track" id="marketTrack">
-    <span class="m-item">Intelligence Loading...</span>
+    <span class="m-item">Connecting to market data…</span>
   </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════
-     HEADER / MASTHEAD
+     MASTHEAD
 ═══════════════════════════════════════════════ -->
 <header class="site-header" id="siteHeader">
+
   <div class="header-left">
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
       <span></span><span></span><span></span>
     </button>
-    <a href="/" class="logo">
+    <a href="/" class="logo" aria-label="brief.pk home">
       <img src="/img/brief_logo.png" alt="brief.pk" class="logo-img">
     </a>
     <div class="header-divider"></div>
-    <div class="lang-switcher" id="headerLangSwitcher">
+    <div class="lang-switcher" id="headerLangSwitcher" aria-label="Language filter">
       <button class="lang-btn" data-lang="all">All</button>
       <button class="lang-btn active" data-lang="en">EN</button>
       <button class="lang-btn" data-lang="ur">اردو</button>
@@ -51,212 +60,185 @@
   </div>
 
   <div class="header-center">
-    <div class="header-center-inner">
-      <div class="header-center-row">
-        <div class="live-indicator">
-          <div class="live-blinker" style="background:var(--cyan);box-shadow:none;margin-right:0;"></div>
-          <span>LIVE BRIEFING</span>
+    <div class="header-center-row">
+      <div class="live-indicator">
+        <div class="live-blinker" style="background:var(--cyan);"></div>
+        <span>LIVE BRIEFING</span>
+      </div>
+      <span class="intel-chip">ALL PAKISTAN</span>
+      <span class="intel-chip">NEWS · MARKETS · SECURITY</span>
+    </div>
+    <div class="header-center-row stats-row">
+      <div class="stat-group">
+        <div class="stat-item">
+          <span class="stat-pill" id="headerStatCount">—</span>
+          <span class="stat-label">reports</span>
         </div>
-        <div class="header-intel-strip">
-          <span class="intel-chip" id="headerScopeChip">ALL PAKISTAN</span>
-          <span class="intel-chip">NEWS · MARKETS · SECURITY</span>
+        <span class="stat-sep">/</span>
+        <div class="stat-item">
+          <span class="stat-pill" id="headerStatSources">—</span>
+          <span class="stat-label">sources</span>
         </div>
       </div>
-      <div class="header-center-row stats-row">
-        <div class="stat-group">
-          <div class="stat-item">
-            <span class="stat-pill" id="headerStatCount">—</span>
-            <span class="stat-label">reports</span>
-          </div>
-          <span class="stat-sep">/</span>
-          <div class="stat-item">
-            <span class="stat-pill" id="headerStatSources">—</span>
-            <span class="stat-label">sources</span>
-          </div>
-        </div>
-        <span class="header-update" id="headerUpdatedAt">syncing…</span>
-      </div>
+      <span class="header-update" id="headerUpdatedAt">syncing…</span>
     </div>
   </div>
 
   <div class="header-right">
-    <div class="search-bar">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search stories, sources, topics" autocomplete="off">
+    <div class="search-bar" role="search">
+      <input type="text" id="searchInput" class="search-input"
+             placeholder="Search stories, sources, topics…" autocomplete="off"
+             aria-label="Search articles">
       <button id="searchClear" aria-label="Clear search">✕</button>
     </div>
-    <button class="btn-refresh" id="refreshBtn">REFRESH</button>
+    <button class="btn-refresh" id="refreshBtn" aria-label="Refresh feed">REFRESH</button>
   </div>
+
 </header>
 
 <!-- ═══════════════════════════════════════════════
      NEWS TICKER
 ═══════════════════════════════════════════════ -->
-<div class="ticker-bar" id="tickerBar">
+<div class="ticker-bar" id="tickerBar" aria-live="polite" aria-label="Breaking news ticker">
   <div class="ticker-badge">FLASH</div>
   <div class="ticker-viewport">
     <div class="ticker-track" id="tickerTrack">
-      <span>Fetching Pakistan Intelligence Feed...</span>
+      <span>Fetching Pakistan Intelligence Feed…</span>
     </div>
   </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════
-     APP SHELL
+     MARKET BOARD — full-width data hero
+═══════════════════════════════════════════════ -->
+<div class="market-board" id="marketBoard" aria-label="Market data">
+  <!-- JS renders mb-inner with mb-major + mb-commodities -->
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     APP SHELL — 3-column grid
 ═══════════════════════════════════════════════ -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <div class="app-shell" id="appShell">
 
-  <!-- LEFT NAVIGATION SIDEBAR -->
-  <aside class="sidebar" id="sidebar">
+  <!-- ── LEFT SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar" aria-label="Navigation filters">
     <nav class="sidebar-nav">
+
+      <!-- Scope switch -->
+      <div class="scope-section">
+        <div class="nav-section-label" style="padding:5px 2px 6px;border-bottom:1px solid var(--border);margin-bottom:6px;">Scope</div>
+        <div class="scope-switch" id="scopeSwitch" aria-label="Pakistan scope filters">
+          <button class="scope-btn active" data-scope="all">All</button>
+          <button class="scope-btn" data-scope="internal">Internal</button>
+          <button class="scope-btn" data-scope="external">External</button>
+        </div>
+      </div>
+
+      <!-- Language -->
       <div class="nav-section sidebar-lang-section">
         <div class="nav-section-label">Language</div>
-        <div class="lang-switcher sidebar-lang-switcher" id="sidebarLangSwitcher">
+        <div class="sidebar-lang-switcher" id="sidebarLangSwitcher" aria-label="Language">
           <button class="lang-btn" data-lang="all">All</button>
           <button class="lang-btn active" data-lang="en">EN</button>
           <button class="lang-btn" data-lang="ur">اردو</button>
         </div>
       </div>
 
+      <!-- Active filters -->
       <div class="sidebar-tools">
         <div class="sidebar-tools-row">
-          <span class="sidebar-tools-label">Active Filters</span>
+          <span class="sidebar-tools-label">Filters</span>
           <button class="sidebar-reset-btn" id="resetFiltersBtn">Reset</button>
         </div>
         <div class="active-filters" id="activeFiltersChips"></div>
       </div>
 
+      <!-- Topics -->
       <div class="nav-section">
         <div class="nav-section-label">Topics</div>
         <ul class="nav-list" id="catNavList"></ul>
       </div>
+
+      <!-- Sources -->
       <div class="nav-section">
         <div class="nav-section-label">Sources</div>
         <ul class="sources-list" id="sourceNavList"></ul>
       </div>
+
     </nav>
   </aside>
 
-  <!-- MAIN NEWS TERMINAL -->
+  <!-- ── MAIN CONTENT ── -->
   <main class="main-content" id="mainContent">
 
-    <!-- ── COMMAND STRIP (replaces the old hero text box) ── -->
-    <div class="command-strip">
-      <div class="command-strip-left">
-        <div class="live-dot sm" style="background:var(--red);animation:blink 1.3s ease-in-out infinite;"></div>
-        <span class="command-strip-label">PAKISTAN INTEL</span>
-        <span class="command-strip-stat"><span id="cmdStatCount">—</span> reports · <span id="cmdStatSources">—</span> sources</span>
+    <!-- Breaking Queue -->
+    <section class="bq-section" aria-label="Breaking news queue">
+      <div class="section-header">
+        <span class="section-title">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;animation:blink 1.3s ease-in-out infinite;"></span>
+          Breaking Queue
+        </span>
+        <span class="section-meta">LIVE · TOP 10</span>
       </div>
-      <div class="scope-switch" id="scopeSwitch" aria-label="Pakistan scope filters">
-        <button class="scope-btn active" data-scope="all">All Pakistan</button>
-        <button class="scope-btn" data-scope="internal">Internal</button>
-        <button class="scope-btn" data-scope="external">External</button>
-      </div>
-      <div class="command-strip-right" id="cmdUpdatedAt">—</div>
-    </div>
-
-    <!-- ── MARKET PULSE — HERO WIDGET (immediately visible) ── -->
-    <section class="panel-block terminal-widget prominent market-hero" id="marketSection">
-      <div class="panel-header dark">
-        <div style="display:flex;align-items:center;">
-          <div class="live-blinker"></div>
-          <span class="panel-title">Market Pulse</span>
-        </div>
-        <span style="font-size:9px;opacity:0.5;font-family:var(--font-data);color:var(--cyan);">PKR · FX · EQUITIES · COMMODITIES · ESSENTIALS</span>
-      </div>
-      <div class="market-widget-prominent" id="marketWidgetContainer">
-        <!-- skeleton while loading -->
-        <div class="mw-headline-strip" style="background:var(--navy);padding:14px 16px;">
-          <div class="skel" style="height:36px;width:100%;background:rgba(255,255,255,0.06);border-radius:4px;"></div>
-        </div>
-      </div>
+      <div class="bq-list" id="breakingQueue" role="list"></div>
     </section>
 
-    <!-- ── INTEL WIDGETS (breaking queue + trend radar + source dominance) ── -->
-    <section class="intel-widget-grid" aria-label="Live dashboard widgets">
-      <article class="widget-card">
-        <div class="widget-head">
-          <span class="widget-title">Breaking Queue</span>
-          <span class="widget-meta">Live</span>
-        </div>
-        <ul class="widget-list" id="breakingQueue"></ul>
-      </article>
+    <!-- Category Sections (JS-rendered) -->
+    <div id="categorySections"></div>
 
-      <article class="widget-card">
-        <div class="widget-head">
-          <span class="widget-title">Trend Radar</span>
-          <span class="widget-meta">Top Topics</span>
-        </div>
-        <ul class="trend-list" id="trendingList"></ul>
-      </article>
-
-      <article class="widget-card">
-        <div class="widget-head">
-          <span class="widget-title">Source Dominance</span>
-          <span class="widget-meta">Coverage Mix</span>
-        </div>
-        <div class="source-breakdown" id="sourceBreakdown"></div>
-      </article>
-    </section>
-
-    <!-- ── DASHBOARD GRID ── -->
-    <div class="dashboard-grid">
-
-      <!-- PRIMARY EDITORIAL COLUMN -->
-      <div class="editorial-col">
-
-        <!-- Breaking Focus -->
-        <section class="panel-block breaking-panel" id="breakingPanel">
-          <div class="panel-header dark">
-            <div style="display:flex;align-items:center;">
-              <div class="live-blinker" style="background:var(--red);"></div>
-              <span class="panel-title">Breaking Focus</span>
-            </div>
-            <span style="font-size:9px;opacity:0.6;font-family:var(--font-data);color:#ffb4b4;">PAKISTAN LIVE</span>
-          </div>
-          <div class="breaking-deck" id="breakingDeck"></div>
-        </section>
-
-        <!-- Dynamic Category Sections (compact card list) -->
-        <div id="categorySections"></div>
-
-        <!-- Load More -->
-        <div class="load-more-row" id="loadMoreRow" style="display:none">
-          <button class="btn-load-more" id="loadMoreBtn" onclick="App.loadMoreSection()">
-            Load More Stories
-          </button>
-        </div>
-      </div>
-
-      <!-- RIGHT SIGNALS RAIL -->
-      <div class="terminal-col">
-        <section class="panel-block terminal-widget" id="signalsSection">
-          <div class="panel-header dark">
-            <div style="display:flex;align-items:center;">
-              <div class="live-blinker"></div>
-              <span class="panel-title">Signals</span>
-            </div>
-            <span style="font-size:9px;opacity:0.5;font-family:var(--font-data);color:var(--cyan);">LIVE · SECURITY</span>
-          </div>
-
-          <div class="signals-tabs" id="signalsTabs">
-            <button class="signals-tab active" data-signal="live">Latest</button>
-            <button class="signals-tab" data-signal="security">Security</button>
-          </div>
-
-          <div class="signals-panels">
-            <ul class="live-feed-list signals-panel active" id="liveFeedList"></ul>
-            <ul class="live-feed-list signals-panel" id="conflictReports"></ul>
-          </div>
-        </section>
-      </div>
-
+    <!-- Load More -->
+    <div class="load-more-row" id="loadMoreRow" style="display:none">
+      <button class="btn-load-more" id="loadMoreBtn">Load More Stories</button>
     </div>
 
   </main>
-</div>
 
+  <!-- ── RIGHT RAIL ── -->
+  <aside class="right-rail" id="rightRail" aria-label="Intelligence signals">
+
+    <!-- Trend Radar -->
+    <div class="rail-widget">
+      <div class="rail-header">
+        <span class="rail-title">Trend Radar</span>
+        <span class="rail-meta">TOP TOPICS</span>
+      </div>
+      <ul class="trend-list" id="trendingList" role="list"></ul>
+    </div>
+
+    <!-- Source Dominance -->
+    <div class="rail-widget">
+      <div class="rail-header">
+        <span class="rail-title">Source Dominance</span>
+        <span class="rail-meta">COVERAGE MIX</span>
+      </div>
+      <div class="source-breakdown" id="sourceBreakdown"></div>
+    </div>
+
+    <!-- Live Signals -->
+    <div class="rail-widget" style="flex:1;display:flex;flex-direction:column;">
+      <div class="rail-header">
+        <span class="rail-title">Signals</span>
+        <span class="rail-meta">LIVE · SECURITY</span>
+      </div>
+      <div class="signals-tabs" id="signalsTabs" role="tablist">
+        <button class="signals-tab active" data-signal="live" role="tab" aria-selected="true">Latest</button>
+        <button class="signals-tab" data-signal="security" role="tab" aria-selected="false">Security</button>
+      </div>
+      <div class="signals-panels" style="flex:1;">
+        <ul class="live-feed-list signals-panel active" id="liveFeedList" role="list"></ul>
+        <ul class="live-feed-list signals-panel" id="conflictReports" role="list"></ul>
+      </div>
+    </div>
+
+  </aside>
+
+</div><!-- /app-shell -->
+
+<!-- ═══════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════ -->
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-logo">brief<span class="logo-dot">.</span><span class="logo-pk">pk</span></div>
@@ -265,30 +247,33 @@
   </div>
 </footer>
 
-<button class="fab" id="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<!-- FAB -->
+<button class="fab" id="fab" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">↑</button>
 
 <!-- MOBILE BOTTOM NAV -->
 <nav class="mobile-nav" id="mobileNav" aria-label="Mobile navigation">
-  <button class="mnav-btn" id="mnavFeed" onclick="App.filterCategory('All')">
-    <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
-    <span class="mnav-label">Feed</span>
-  </button>
-  <button class="mnav-btn" id="mnavPolitics" onclick="App.filterCategory('Politics')">
-    <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
-    <span class="mnav-label">Politics</span>
-  </button>
-  <button class="mnav-btn" id="mnavMarkets" onclick="App.filterCategory('Economy')">
-    <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
-    <span class="mnav-label">Markets</span>
-  </button>
-  <button class="mnav-btn" id="mnavSecurity" onclick="App.filterCategory('Security')">
-    <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
-    <span class="mnav-label">Security</span>
-  </button>
-  <button class="mnav-btn" id="mnavSearchToggle">
-    <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-    <span class="mnav-label">Search</span>
-  </button>
+  <nav>
+    <button class="mnav-btn" onclick="App.filterCategory('All')">
+      <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+      <span class="mnav-label">Feed</span>
+    </button>
+    <button class="mnav-btn" onclick="App.filterCategory('Politics')">
+      <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+      <span class="mnav-label">Politics</span>
+    </button>
+    <button class="mnav-btn" onclick="App.filterCategory('Economy')">
+      <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+      <span class="mnav-label">Markets</span>
+    </button>
+    <button class="mnav-btn" onclick="App.filterCategory('Security')">
+      <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+      <span class="mnav-label">Security</span>
+    </button>
+    <button class="mnav-btn" onclick="document.getElementById('searchInput').focus()">
+      <span class="mnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <span class="mnav-label">Search</span>
+    </button>
+  </nav>
 </nav>
 
 <script src="/js/app.js"></script>
