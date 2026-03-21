@@ -13,10 +13,10 @@ const state = {
   updatedAt: null,
   news: [],
   market: null,
-  scope: 'internal',
+  pakistanMap: null,
   strictFocus: true,
-  search: '',
-  popPeriod: 'today'
+  popPeriod: 'today',
+  mapLayer: 'weather'
 };
 
 function escapeHtml(text) {
@@ -91,10 +91,7 @@ function filteredNews() {
       if (item.scope === 'external' && !item.directPakistanSignal) return false;
     }
 
-    if (state.scope !== 'all' && item.scope !== state.scope) return false;
-    if (!state.search) return true;
-    const hay = `${item.title} ${item.description} ${item.source} ${item.category}`.toLowerCase();
-    return hay.includes(state.search.toLowerCase());
+    return true;
   });
 }
 
@@ -175,20 +172,8 @@ function renderKeywordSignals(items) {
 
   const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
   el.innerHTML = top.map(([k, c]) => `
-    <button class="kw-pill" data-kw="${escapeHtml(k)}" title="${c} mentions">${escapeHtml(k)}</button>
+    <span class="kw-pill" title="${c} mentions">${escapeHtml(k)}</span>
   `).join('');
-
-  el.querySelectorAll('.kw-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const kw = btn.dataset.kw;
-      const searchInput = document.getElementById('searchInput');
-      if (searchInput) {
-        searchInput.value = kw;
-        state.search = kw;
-        renderAll();
-      }
-    });
-  });
 }
 
 function renderMarketTicker() {
@@ -443,6 +428,8 @@ function renderLiveFeed(items) {
 function renderLeftRail(items) {
   const catEl = document.getElementById('categoryNav');
   const srcEl = document.getElementById('sourceNav');
+  const pulseEl = document.getElementById('pulseBoard');
+  const narrativeEl = document.getElementById('narrativeMap');
 
   if (catEl) {
     const rows = aggregateCounts(items, (n) => n.category).slice(0, 14);
@@ -462,6 +449,38 @@ function renderLeftRail(items) {
         <span class="count">${c}</span>
       </li>
     `).join('');
+  }
+
+  if (pulseEl) {
+    const now = Date.now();
+    const hr = 60 * 60 * 1000;
+    const window6h = items.filter((n) => now - new Date(n.publishedAt).getTime() <= 6 * hr);
+    const highPriority = items.filter((n) => n.priority === 'high').length;
+    const internalShare = items.length ? Math.round((items.filter((n) => n.scope === 'internal').length / items.length) * 100) : 0;
+    const energyShare = items.length ? Math.round((items.filter((n) => n.category === 'Energy' || n.category === 'Markets').length / items.length) * 100) : 0;
+
+    pulseEl.innerHTML = `
+      <div class="pulse-grid">
+        <div class="pulse-metric"><span>Live 6h</span><strong>${window6h.length}</strong></div>
+        <div class="pulse-metric"><span>High Priority</span><strong>${highPriority}</strong></div>
+        <div class="pulse-metric"><span>Internal Share</span><strong>${internalShare}%</strong></div>
+        <div class="pulse-metric"><span>Energy Heat</span><strong>${energyShare}%</strong></div>
+      </div>
+    `;
+  }
+
+  if (narrativeEl) {
+    const topCats = aggregateCounts(items, (n) => n.category).slice(0, 5);
+    const max = topCats[0]?.[1] || 1;
+    narrativeEl.innerHTML = topCats.map(([label, count]) => {
+      const width = Math.max(12, Math.round((count / max) * 100));
+      return `
+        <div class="narrative-row">
+          <div class="narrative-meta"><span>${escapeHtml(label)}</span><strong>${count}</strong></div>
+          <div class="narrative-track"><div class="narrative-fill" style="width:${width}%"></div></div>
+        </div>
+      `;
+    }).join('');
   }
 }
 
@@ -517,6 +536,143 @@ function renderMarketSnapshot() {
   ].join('');
 }
 
+function renderPakistanNerveCenter() {
+  const mapEl = document.getElementById('pkMapCanvas');
+  const hotspotsEl = document.getElementById('pkMapHotspots');
+  if (!mapEl || !hotspotsEl) return;
+
+  const payload = state.pakistanMap;
+  if (!payload || !Array.isArray(payload.points)) {
+    mapEl.innerHTML = '<div class="pk-map-empty">Pakistan map intelligence is loading...</div>';
+    hotspotsEl.innerHTML = '<div class="pk-hotspot-empty">No hotspot data yet.</div>';
+    return;
+  }
+
+  const layer = state.mapLayer === 'aqi' || state.mapLayer === 'agri' || state.mapLayer === 'flights' ? state.mapLayer : 'weather';
+  const points = payload.points;
+
+  const toneClass = (score, kind) => {
+    if (!Number.isFinite(score)) return 'muted';
+    if (kind === 'flights') {
+      if (score >= 70) return 'critical';
+      if (score >= 45) return 'elevated';
+      if (score >= 20) return 'watch';
+      return 'normal';
+    }
+    if (kind === 'aqi') {
+      if (score >= 70) return 'critical';
+      if (score >= 45) return 'elevated';
+      if (score >= 20) return 'watch';
+      return 'normal';
+    }
+    if (score >= 75) return 'critical';
+    if (score >= 50) return 'elevated';
+    if (score >= 25) return 'watch';
+    return 'normal';
+  };
+
+  const markerLabel = (point) => {
+    if (layer === 'flights') {
+      return Number.isFinite(point.flights?.count) ? `${point.flights.count} flights` : 'Flights --';
+    }
+    if (layer === 'aqi') {
+      return Number.isFinite(point.aqi?.usAqi) ? `AQI ${Math.round(point.aqi.usAqi)}` : 'AQI --';
+    }
+    if (layer === 'agri') {
+      return Number.isFinite(point.agri?.score) ? `Stress ${point.agri.score}` : 'Stress --';
+    }
+    return Number.isFinite(point.weather?.temperatureC) ? `${Math.round(point.weather.temperatureC)}°` : '--';
+  };
+
+  mapEl.innerHTML = `
+    <div class="pk-map-stage">
+      <svg class="pk-map-outline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M20,12 L38,7 L57,11 L71,22 L80,36 L84,51 L76,67 L64,86 L43,92 L24,80 L16,62 L14,42 L19,27 Z"></path>
+      </svg>
+      ${points
+        .map((point) => {
+          const risk = layer === 'aqi'
+            ? point.aqi
+            : (layer === 'agri' ? point.agri : (layer === 'flights' ? point.flights : point.weather));
+          const score = risk?.score;
+          const tone = toneClass(score, layer);
+          return `
+            <button class="pk-node ${tone}" style="left:${point.x}%;top:${point.y}%" title="${escapeHtml(point.name)} · ${escapeHtml(markerLabel(point))}">
+              <span class="pk-node-dot"></span>
+              <span class="pk-node-label">${escapeHtml(point.name)}</span>
+              <span class="pk-node-meta">${escapeHtml(markerLabel(point))}</span>
+            </button>
+          `;
+        })
+        .join('')}
+    </div>
+  `;
+
+  const hotspots = layer === 'aqi'
+    ? payload.summary?.aqiHotspots
+    : (layer === 'agri'
+      ? payload.summary?.agriHotspots
+      : (layer === 'flights' ? payload.summary?.flightsHotspots : payload.summary?.weatherHotspots));
+  const avg = layer === 'aqi'
+    ? payload.summary?.aqiAverage
+    : (layer === 'agri'
+      ? payload.summary?.agriAverage
+      : (layer === 'flights' ? payload.summary?.flightsAverage : payload.summary?.weatherAverage));
+  const avgLabel = layer === 'aqi'
+    ? 'AQI Pressure'
+    : (layer === 'agri' ? 'Agri Stress' : (layer === 'flights' ? 'Airspace Pressure' : 'Weather Risk'));
+
+  const rows = Array.isArray(hotspots) ? hotspots : [];
+  const layerSource = payload.meta?.sources?.[layer] || 'unknown_source';
+  const observedAt = payload.meta?.observedAtLatest || payload.updatedAt || null;
+  const observedLabel = observedAt
+    ? new Date(observedAt).toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Karachi' })
+    : '--';
+  const flightsMeta = layer === 'flights'
+    ? {
+        airborne: payload.summary?.flightsAirborne,
+        onGround: payload.summary?.flightsOnGround,
+        approach: payload.summary?.flightsApproachPressure,
+        corridors: payload.summary?.flightsCorridors || {}
+      }
+    : null;
+
+  hotspotsEl.innerHTML = `
+    <div class="pk-hotspot-head">
+      <span>${avgLabel}</span>
+      <strong>${Number.isFinite(avg) ? `${avg}/100` : '--'}</strong>
+    </div>
+    ${flightsMeta ? `
+      <div class="pk-flight-metrics">
+        <div class="pk-flight-row"><span>Airborne</span><strong>${Number.isFinite(flightsMeta.airborne) ? flightsMeta.airborne : '--'}</strong></div>
+        <div class="pk-flight-row"><span>On Ground</span><strong>${Number.isFinite(flightsMeta.onGround) ? flightsMeta.onGround : '--'}</strong></div>
+        <div class="pk-flight-row"><span>Approach Pressure</span><strong>${Number.isFinite(flightsMeta.approach) ? flightsMeta.approach : '--'}</strong></div>
+        <div class="pk-flight-row"><span>KHI/LHE/ISB</span><strong>${Number.isFinite(flightsMeta.corridors.KHI) ? flightsMeta.corridors.KHI : 0} / ${Number.isFinite(flightsMeta.corridors.LHE) ? flightsMeta.corridors.LHE : 0} / ${Number.isFinite(flightsMeta.corridors.ISB) ? flightsMeta.corridors.ISB : 0}</strong></div>
+      </div>
+      <div class="pk-flight-explain">
+        <p>Pressure score reflects city flight share vs the busiest corridor in Pakistan airspace right now.</p>
+        <div class="pk-flight-legend">
+          <span><i class="dot normal"></i>Normal</span>
+          <span><i class="dot watch"></i>Watch</span>
+          <span><i class="dot elevated"></i>Elevated</span>
+          <span><i class="dot critical"></i>Critical</span>
+        </div>
+      </div>
+    ` : ''}
+    <div class="pk-hotspot-list">
+      ${rows
+        .map((row) => `
+          <div class="pk-hotspot-row">
+            <span>${escapeHtml(row.city)}</span>
+            <span>${Number.isFinite(row.score) ? row.score : '--'}</span>
+          </div>
+        `)
+        .join('') || '<div class="pk-hotspot-empty">No hotspots available.</div>'}
+    </div>
+    <div class="pk-hotspot-footnote">Source: ${escapeHtml(layerSource)} · Updated: ${escapeHtml(observedLabel)} PKT</div>
+  `;
+}
+
 function renderAll() {
   const items = filteredNews();
   renderMarketTicker();
@@ -528,6 +684,7 @@ function renderAll() {
   renderPopularNews();
   renderTrendRadar(items);
   renderSourceDominance(items);
+  renderPakistanNerveCenter();
   renderMarketSnapshot();
   renderCategoryActivity(items);
   renderKeywordSignals(items);
@@ -552,8 +709,14 @@ async function fetchMarket() {
   return data;
 }
 
+async function fetchPakistanMap() {
+  const res = await fetch('/api/pakistan-map', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`pk_map_http_${res.status}`);
+  return await res.json();
+}
+
 async function refreshData() {
-  const [newsRes, marketRes] = await Promise.allSettled([fetchNews(), fetchMarket()]);
+  const [newsRes, marketRes, mapRes] = await Promise.allSettled([fetchNews(), fetchMarket(), fetchPakistanMap()]);
 
   if (newsRes.status === 'fulfilled') {
     state.news = Array.isArray(newsRes.value.articles) ? newsRes.value.articles : [];
@@ -565,38 +728,21 @@ async function refreshData() {
     state.updatedAt = marketRes.value.updatedAt || state.updatedAt;
   }
 
+  if (mapRes.status === 'fulfilled') {
+    state.pakistanMap = mapRes.value;
+    state.updatedAt = mapRes.value.updatedAt || state.updatedAt;
+  }
+
   renderAll();
 }
 
 function bindEvents() {
-  const scopeButtons = document.querySelectorAll('.scope-btn');
-  scopeButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const scope = btn.dataset.scope || 'all';
-      state.scope = scope;
-      scopeButtons.forEach((b) => b.classList.toggle('active', b === btn));
-      renderAll();
-    });
-  });
-
   const focusToggle = document.getElementById('focusModeToggle');
   if (focusToggle) {
     focusToggle.checked = state.strictFocus;
     focusToggle.addEventListener('change', (e) => {
       state.strictFocus = Boolean(e.target.checked);
       renderAll();
-    });
-  }
-
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    let timer = null;
-    searchInput.addEventListener('input', (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        state.search = String(e.target.value || '').trim();
-        renderAll();
-      }, 150);
     });
   }
 
@@ -614,6 +760,18 @@ function bindEvents() {
       state.popPeriod = btn.dataset.period || 'today';
       popTabs.forEach(b => b.classList.toggle('active', b === btn));
       renderPopularNews();
+    });
+  });
+
+  const layerBtns = document.querySelectorAll('.pk-layer-btn');
+  layerBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const layer = (btn.dataset.layer === 'aqi' || btn.dataset.layer === 'agri' || btn.dataset.layer === 'flights')
+        ? btn.dataset.layer
+        : 'weather';
+      state.mapLayer = layer;
+      layerBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      renderPakistanNerveCenter();
     });
   });
 }

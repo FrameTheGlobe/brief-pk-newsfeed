@@ -186,24 +186,6 @@
 
   <main class="dashboard-shell">
     <aside class="left-rail">
-      <div class="rail-block">
-        <div class="rail-label">Scope</div>
-        <div class="scope-switch" id="scopeSwitch">
-          <button class="scope-btn" data-scope="all">All</button>
-          <button class="scope-btn active" data-scope="internal">Internal</button>
-          <button class="scope-btn" data-scope="external">External</button>
-        </div>
-        <label class="focus-toggle" for="focusModeToggle">
-          <input id="focusModeToggle" type="checkbox" checked />
-          <span>Strict Pakistan Focus</span>
-        </label>
-      </div>
-
-      <div class="rail-block">
-        <div class="rail-label">Search</div>
-        <input id="searchInput" class="search-input" placeholder="topics, source, category" />
-      </div>
-
       <div class="rail-block popular-widget">
         <div class="rail-label">Most Popular</div>
         <div class="popular-tabs">
@@ -212,6 +194,20 @@
           <button class="pop-tab" data-period="3d">3D</button>
         </div>
         <div id="popularNews" class="popular-list"></div>
+      </div>
+
+      <div class="rail-block pulse-widget">
+        <div class="rail-label">Pakistan Pulse</div>
+        <label class="focus-toggle" for="focusModeToggle">
+          <input id="focusModeToggle" type="checkbox" checked />
+          <span>Strict Pakistan Focus</span>
+        </label>
+        <div id="pulseBoard" class="pulse-board"></div>
+      </div>
+
+      <div class="rail-block">
+        <div class="rail-label">Narrative Map</div>
+        <div id="narrativeMap" class="narrative-map"></div>
       </div>
 
       <div class="rail-block">
@@ -274,6 +270,18 @@
     </section>
 
     <aside class="right-rail">
+      <div class="rail-widget">
+        <div class="widget-head">Pakistan Nerve Center<span class="lane-head-badge">Beta</span></div>
+        <div class="pk-map-head">
+          <button class="pk-layer-btn active" data-layer="weather">Weather</button>
+          <button class="pk-layer-btn" data-layer="aqi">AQI</button>
+          <button class="pk-layer-btn" data-layer="agri">Agri</button>
+          <button class="pk-layer-btn" data-layer="flights">Flights</button>
+        </div>
+        <div id="pkMapCanvas" class="pk-map-canvas"></div>
+        <div id="pkMapHotspots" class="pk-map-hotspots"></div>
+      </div>
+
       <div class="rail-widget">
         <div class="widget-head">Trend Radar</div>
         <ul id="trendRadar" class="widget-list"></ul>
