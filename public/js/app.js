@@ -333,16 +333,13 @@ function renderCategories(items) {
           <div class="cards-grid">
             ${cards
               .map(
-                (n) => `
-                <a class="news-card" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">
-                  <div class="badges">
-                    <span class="badge ${escapeHtml(n.priority)}">${escapeHtml(n.priority)}</span>
-                    <span class="badge">${escapeHtml(n.scope)}</span>
-                  </div>
-                  <div class="title">${escapeHtml(n.title)}</div>
-                  <div class="meta">
-                    <span>${escapeHtml(n.source)}</span>
-                    <span>${relTime(n.publishedAt)}</span>
+                (n, i) => `
+                <a class="news-card" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer" data-priority="${escapeHtml(n.priority)}">
+                  ${i === 0 ? `<div class="card-priority-label">${escapeHtml(n.priority)}</div>` : ''}
+                  <div class="card-headline">${escapeHtml(n.title)}</div>
+                  <div class="card-foot">
+                    <span class="card-source">${escapeHtml(n.source)}</span>
+                    <span class="card-time">${relTime(n.publishedAt)}</span>
                   </div>
                 </a>
               `

@@ -539,49 +539,92 @@ body {
   font-weight: 700;
 }
 
+/* ─── Category Sections ──────────────────────── */
 .category-sections {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-top: 16px;
+  align-items: start;
 }
 
 .category-section {
   background: var(--surface);
   border: 1px solid var(--panel-border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
 
 .cards-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.news-card {
-  background: var(--surface);
-  padding: 16px;
-  text-decoration: none;
-  border-bottom: 1px solid var(--panel-border);
-  transition: all 0.25s ease;
   display: flex;
   flex-direction: column;
 }
 
-.news-card:last-child { border-bottom: none; }
-
-.news-card:hover {
-  background: var(--surface-2);
+.news-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 13px 16px 11px 13px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--panel-border);
+  border-left: 3px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  color: inherit;
 }
 
-.news-card .title {
+.news-card:last-child { border-bottom: none; }
+
+.news-card:hover { background: var(--surface-2); }
+
+/* Priority left-border accent */
+.news-card[data-priority="high"]     { border-left-color: var(--brand-red); }
+.news-card[data-priority="breaking"] { border-left-color: var(--brand-red); }
+.news-card[data-priority="normal"]   { border-left-color: var(--accent-amber); }
+
+.card-priority-label {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brand-red);
+}
+
+.news-card[data-priority="normal"] .card-priority-label {
+  color: var(--accent-amber);
+}
+
+.card-headline {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
   color: var(--text-main);
-  font-size: 13.5px;
+}
+
+.news-card:hover .card-headline { color: var(--brand-navy); }
+
+.card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.card-source {
+  font-family: var(--mono-font);
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.45;
-  margin-top: 10px;
-  margin-bottom: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-time {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 /* Charts Strip */
@@ -717,59 +760,6 @@ body {
   box-shadow: 0 0 0 3px rgba(26,39,68,0.08);
 }
 
-/* News Cards */
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  border-left: 1px solid var(--panel-border);
-  border-top: 1px solid var(--panel-border);
-}
-
-.news-card {
-  background: var(--surface);
-  padding: 20px;
-  text-decoration: none;
-  border-right: 1px solid var(--panel-border);
-  border-bottom: 1px solid var(--panel-border);
-  transition: all 0.25s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.news-card:hover {
-  background: var(--surface-2);
-  z-index: 1;
-}
-
-.news-card .title {
-  color: var(--text-main);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.45;
-  margin-top: 12px;
-  margin-bottom: 16px;
-}
-
-.news-card:hover .title {
-  color: var(--brand-navy);
-}
-
-.news-card .meta {
-  margin-top: auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: var(--mono-font);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.meta span:first-child {
-  color: var(--text-dim);
-}
 
 @media (max-width: 1100px) {
   .dashboard-shell {
@@ -1041,8 +1031,5 @@ body {
 .fresh-dot.recent { background: var(--accent-amber); }
 .fresh-dot.stale { background: #94a3b8; }
 
-/* ─── Main Section Cluster Uplift ─────────────── */
-.category-section { margin-bottom: 20px; border-radius: 10px; box-shadow: var(--shadow-sm); overflow: hidden; }
+/* ─── Category Section Radius ─────────────────── */
 .category-head { border-top-left-radius: 10px; border-top-right-radius: 10px; }
-.news-card { padding: 16px 20px; }
-.news-card .title { font-size: 14.5px; margin: 10px 0 14px; }
