@@ -64,6 +64,21 @@ const CAT_ICONS = {
   'Technology':     '💻',
 };
 
+const INTERNAL_SCOPE_CATS = new Set([
+  'Politics',
+  'Economy',
+  'Society',
+  'Sports',
+  'Technology',
+]);
+
+const EXTERNAL_SCOPE_CATS = new Set([
+  'Geopolitics',
+  'Foreign Policy',
+  'Security',
+  'Military',
+]);
+
 /* ═══════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════ */
@@ -72,6 +87,7 @@ const State = {
   articles:       [],       // all fetched articles
   activeCategory: 'All',   // current category filter
   activeLang:     'en',   // 'all' | 'en' | 'ur'
+  activeScope:    'all',   // 'all' | 'internal' | 'external'
   activeSources:  null,     // Set of source ids (null = all active)
   searchQuery:    '',
   lastFetch:      0,
@@ -116,6 +132,32 @@ function getCatBg(cat) {
 
 function getInitials(name = '') {
   return name.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+}
+
+function applyScopeFilter(articles = []) {
+  if (State.activeScope === 'internal') {
+    return articles.filter(a => INTERNAL_SCOPE_CATS.has(a.category));
+  }
+  if (State.activeScope === 'external') {
+    return articles.filter(a => EXTERNAL_SCOPE_CATS.has(a.category));
+  }
+  return articles;
+}
+
+function setMarqueeDuration(trackEl, cssVar, baselineSeconds = 70) {
+  if (!trackEl) return;
+
+  const viewport = trackEl.parentElement?.clientWidth || 0;
+  const width = trackEl.scrollWidth || 0;
+  if (!viewport || !width) return;
+
+  const ratio = Math.max(1, width / viewport);
+  const duration = Math.min(220, Math.max(45, Math.round(baselineSeconds * ratio)));
+
+  trackEl.style.setProperty(cssVar, `${duration}s`);
+  trackEl.style.animation = 'none';
+  void trackEl.offsetHeight;
+  trackEl.style.animation = '';
 }
 
 /* ═══════════════════════════════════════════════
@@ -188,6 +230,9 @@ function getFiltered() {
   // Suppress entertainment from all intelligence views
   arts = arts.filter(a => !EXCLUDED_CATS.has(a.category));
 
+  // Pakistan scope filter (internal/external)
+  arts = applyScopeFilter(arts);
+
   // Source filter
   if (State.activeSources && State.activeSources.size > 0) {
     arts = arts.filter(a => State.activeSources.has(a.source.id));
@@ -218,6 +263,8 @@ function getFiltered() {
 function getByCategory(cat) {
   return State.articles.filter(a => {
     if (EXCLUDED_CATS.has(a.category)) return false;
+    if (State.activeScope === 'internal' && !INTERNAL_SCOPE_CATS.has(a.category)) return false;
+    if (State.activeScope === 'external' && !EXTERNAL_SCOPE_CATS.has(a.category)) return false;
     if (State.activeSources && !State.activeSources.has(a.source.id)) return false;
     if (State.activeLang !== 'all' && a.source.lang !== State.activeLang) return false;
     return a.category === cat;
@@ -235,17 +282,33 @@ function isBreaking(pubDate) {
   return age > 0 && age < 60 * 60 * 1000;
 }
 
+function getScopeByCategory(category) {
+  if (INTERNAL_SCOPE_CATS.has(category)) return 'internal';
+  if (EXTERNAL_SCOPE_CATS.has(category)) return 'external';
+  return 'internal';
+}
+
+function getPriority(article) {
+  if (isBreaking(article.pubDate)) return 'high';
+  if (EXTERNAL_SCOPE_CATS.has(article.category)) return 'high';
+  if (article.category === 'Politics' || article.category === 'Economy') return 'medium';
+  return 'normal';
+}
+
 function buildTags(article) {
   const s    = article.source;
-  const cc   = getCatColor(article.category);
+  const scope = getScopeByCategory(article.category);
+  const priority = getPriority(article);
   const brk  = isBreaking(article.pubDate);
 
   return `
     <div class="card-tags">
-      <span class="tag-cat" style="color:var(--accent)">${escHtml(article.category).toUpperCase()}</span>
+      <span class="tag-scope ${scope === 'external' ? 'scope-external' : 'scope-internal'}">${scope === 'external' ? 'EXTERNAL' : 'INTERNAL'}</span>
+      <span class="tag-priority p-${priority}">${priority.toUpperCase()}</span>
+      <span class="tag-cat">${escHtml(article.category).toUpperCase()}</span>
       <span class="tag-sep">|</span>
       <span class="tag-source">${escHtml(s.name)}</span>
-      ${brk ? '<span class="tag-breaking" style="color:var(--accent);margin-left:8px;font-weight:900">BREAKING</span>' : ''}
+      ${brk ? '<span class="tag-breaking">BREAKING</span>' : ''}
     </div>`;
 }
 
@@ -283,15 +346,26 @@ function cardFooter(article) {
 /* ── Hero main card ─────────────────────────── */
 function buildHeroMain(article) {
   if (!article) return '';
+  const scope = getScopeByCategory(article.category);
+  const priority = getPriority(article);
   const img = article.image
     ? `<img class="card-image" src="${escHtml(article.image)}" alt="" loading="eager" onerror="this.style.display='none'">`
     : buildPlaceholder(article.source.name, article.source.color, 240);
+
+  const heroMeta = `${escHtml(article.source.name)} · ${timeAgo(article.pubDate)}`;
 
   return `
     <a class="hero-main" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
       ${img}
       <div class="card-body">
-        ${buildTags(article)}
+        <div class="hero-kicker-row">
+          <span class="hero-kicker-left">
+            <span class="hero-kicker-scope ${scope === 'external' ? 'scope-external' : 'scope-internal'}">${scope === 'external' ? 'EXT' : 'INT'}</span>
+            <span class="hero-kicker-priority p-${priority}">${priority.toUpperCase()}</span>
+            <span class="hero-kicker-cat">${escHtml(article.category).toUpperCase()}</span>
+          </span>
+          <span class="hero-kicker-meta">${heroMeta}</span>
+        </div>
         <div class="card-headline${article.rtl ? ' rtl' : ''}">${escHtml(article.title)}</div>
         ${article.description ? `<p class="card-excerpt">${escHtml(article.description)}</p>` : ''}
         ${cardFooter(article)}
@@ -303,10 +377,15 @@ function buildHeroMain(article) {
 /* ── Side card (Hero Right) ──────────────────── */
 function buildSideCard(article) {
   if (!article) return '';
+  const scope = getScopeByCategory(article.category);
   return `
     <a class="side-card" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
       ${buildCardImage(article)}
       <div class="card-body">
+        <div class="side-card-topline">
+          <span class="side-scope ${scope === 'external' ? 'scope-external' : 'scope-internal'}">${scope === 'external' ? 'EXT' : 'INT'}</span>
+          <span>${escHtml(article.category)}</span>
+        </div>
         <div class="card-headline${article.rtl ? ' rtl' : ''}">${escHtml(article.title)}</div>
         <div class="card-meta">${escHtml(article.source.name)} · ${timeAgo(article.pubDate)}</div>
       </div>
@@ -315,12 +394,13 @@ function buildSideCard(article) {
 
 /* ── Regular news card ──────────────────────── */
 function buildNewsCard(article) {
+  const scope = getScopeByCategory(article.category);
   const img = article.image
     ? `<img class="card-image" src="${escHtml(article.image)}" alt="" loading="lazy" onerror="this.style.display='none'">`
     : buildPlaceholder(article.source.name, article.source.color, 155);
 
   return `
-    <a class="news-card" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
+    <a class="news-card ${scope === 'external' ? 'scope-external' : 'scope-internal'}" href="${escHtml(article.link)}" target="_blank" rel="noopener noreferrer">
       ${img}
       <div class="card-body">
         ${buildTags(article)}
@@ -423,7 +503,7 @@ function renderSingleCategory(articles) {
         <button class="section-header-link" style="background:none; border:none;" onclick="App.filterCategory('All')">← Back</button>
       </div>
       <div class="cards-row">
-        ${articles.map(buildNewsCard).join('') || '<div class="empty-state"><h3>No reports in this lens yet</h3></div>'}
+        ${articles.map(buildNewsCard).join('') || '<div class="empty-state"><h3>No stories in this topic yet</h3></div>'}
       </div>
     </section>`;
 }
@@ -436,7 +516,7 @@ function renderSearchResults(articles) {
   container.innerHTML = `
     <section class="panel-block editorial-col" style="margin-top:0;">
       <div class="panel-header" style="background:var(--accent)">
-        <span class="panel-title">Search: Found ${articles.length} Intel Reports</span>
+        <span class="panel-title">Search: Found ${articles.length} Stories</span>
         <button class="btn-refresh" style="background:rgba(255,255,255,0.2);margin:-8px;" onclick="App.clearSearch()">✕ CLEAR</button>
       </div>
       <div class="cards-row" style="padding:24px;">
@@ -476,6 +556,28 @@ function renderSidebarCategories() {
         </button>
       </li>`;
   }).join('');
+}
+
+function renderActiveFilters() {
+  const container = document.getElementById('activeFiltersChips');
+  if (!container) return;
+
+  const chips = [];
+  if (State.activeLang !== 'en') chips.push(`Lang: ${State.activeLang.toUpperCase()}`);
+  if (State.activeScope !== 'all') chips.push(`Scope: ${State.activeScope}`);
+  if (State.activeCategory !== 'All') chips.push(`Topic: ${State.activeCategory}`);
+  if (State.searchQuery) chips.push(`Search: ${State.searchQuery}`);
+  if (State.activeSources && State.activeSources.size > 0) {
+    const totalSources = new Set(State.articles.map(a => a.source.id)).size;
+    chips.push(`Sources: ${State.activeSources.size}/${totalSources}`);
+  }
+
+  if (!chips.length) {
+    container.innerHTML = '<span class="filter-chip empty">No active filters</span>';
+    return;
+  }
+
+  container.innerHTML = chips.map(chip => `<span class="filter-chip">${escHtml(chip)}</span>`).join('');
 }
 
 function getCatColors(cat) {
@@ -523,6 +625,58 @@ function renderSidebarSources() {
 }
 
 /* ═══════════════════════════════════════════════
+   TOP WIDGET RENDERERS
+═══════════════════════════════════════════════ */
+
+function renderBreakingQueue() {
+  const list = document.getElementById('breakingQueue');
+  if (!list) return;
+
+  const arts = getFiltered();
+  const breaking = arts.filter(a => isBreaking(a.pubDate)).slice(0, 6);
+  const items = breaking.length ? breaking : arts.slice(0, 6);
+
+  if (!items.length) {
+    list.innerHTML = `<li class="widget-item empty">No active alerts</li>`;
+    return;
+  }
+
+  list.innerHTML = items.map((a, i) => `
+    <li class="widget-item" onclick="window.open('${escHtml(a.link)}','_blank')">
+      <span class="widget-rank">${String(i + 1).padStart(2, '0')}</span>
+      <span class="widget-text">${escHtml(a.title)}</span>
+      <span class="widget-time">${timeAgo(a.pubDate)}</span>
+    </li>`).join('');
+}
+
+function renderBreakingDeck() {
+  const deck = document.getElementById('breakingDeck');
+  if (!deck) return;
+
+  const arts = getFiltered();
+  const lead = arts.filter(a => isBreaking(a.pubDate)).slice(0, 4);
+  const items = lead.length ? lead : arts.slice(0, 4);
+
+  if (!items.length) {
+    deck.innerHTML = `<div class="empty-state"><h3>No active breaking stories</h3></div>`;
+    return;
+  }
+
+  deck.innerHTML = items.map(a => {
+    const scope = getScopeByCategory(a.category);
+    return `
+      <a class="breaking-card ${scope === 'external' ? 'scope-external' : 'scope-internal'}" href="${escHtml(a.link)}" target="_blank" rel="noopener noreferrer">
+        <div class="breaking-card-head">
+          <span class="breaking-cat">${escHtml(a.category)}</span>
+          <span class="breaking-time">${timeAgo(a.pubDate)}</span>
+        </div>
+        <div class="breaking-title${a.rtl ? ' rtl' : ''}">${escHtml(a.title)}</div>
+        <div class="breaking-source">${escHtml(a.source.name)}</div>
+      </a>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════
    RIGHT PANEL RENDERERS
 ═══════════════════════════════════════════════ */
 
@@ -537,15 +691,21 @@ function renderLiveFeed() {
     return;
   }
 
-  list.innerHTML = recent.map(a => `
-    <li class="feed-item" onclick="window.open('${escHtml(a.link)}','_blank')">
+  list.innerHTML = recent.map(a => {
+    const scope = getScopeByCategory(a.category);
+    const priority = getPriority(a);
+    return `
+    <li class="feed-item ${scope === 'external' ? 'scope-external' : 'scope-internal'}" onclick="window.open('${escHtml(a.link)}','_blank')">
       <div class="feed-title${a.rtl ? ' rtl' : ''}">${escHtml(a.title)}</div>
       <div class="feed-meta">
+        <span class="feed-pill ${scope === 'external' ? 'scope-external' : 'scope-internal'}">${scope === 'external' ? 'EXT' : 'INT'}</span>
+        <span class="feed-pill p-${priority}">${priority.toUpperCase()}</span>
         <span style="color:var(--accent); font-weight:800">${escHtml(a.source.name)}</span>
         <span>·</span>
         <span>${timeAgo(a.pubDate)}</span>
       </div>
-    </li>`).join('');
+    </li>`;
+  }).join('');
 }
 
 function renderConflictWatch() {
@@ -570,15 +730,20 @@ function renderConflictWatch() {
     return;
   }
 
-  list.innerHTML = relevant.map(a => `
-    <li class="feed-item" onclick="window.open('${escHtml(a.link)}','_blank')">
+  list.innerHTML = relevant.map(a => {
+    const priority = getPriority(a);
+    return `
+    <li class="feed-item scope-external" onclick="window.open('${escHtml(a.link)}','_blank')">
       <div class="feed-title${a.rtl ? ' rtl' : ''}">${escHtml(a.title)}</div>
       <div class="feed-meta">
+        <span class="feed-pill scope-external">EXT</span>
+        <span class="feed-pill p-${priority}">${priority.toUpperCase()}</span>
         <span style="color:var(--gold); font-weight:800">${escHtml(a.source.name)}</span>
         <span>·</span>
         <span>${timeAgo(a.pubDate)}</span>
       </div>
-    </li>`).join('');
+    </li>`;
+  }).join('');
 }
 
 function renderTrending() {
@@ -653,6 +818,7 @@ function renderTicker(articles) {
       <span class="ticker-sep">◆</span>`).join('');
 
   track.innerHTML = items + items; // duplicate for seamless loop
+  setMarqueeDuration(track, '--ticker-scroll-duration', 70);
 }
 
 /* ═══════════════════════════════════════════════
@@ -662,15 +828,30 @@ function renderTicker(articles) {
 function updateHeaderStats() {
   const count   = document.getElementById('headerStatCount');
   const sources = document.getElementById('headerStatSources');
+  const scopeChip = document.getElementById('headerScopeChip');
+  const updatedAt = document.getElementById('headerUpdatedAt');
   if (!count || !sources) return;
 
   count.textContent   = State.articles.length;
   const uniqueSources = new Set(State.articles.map(a => a.source.id)).size;
   sources.textContent = uniqueSources;
 
+  if (scopeChip) {
+    const scopeLabel = State.activeScope === 'all'
+      ? 'ALL PAKISTAN'
+      : State.activeScope === 'internal'
+        ? 'INTERNAL'
+        : 'EXTERNAL';
+    scopeChip.textContent = scopeLabel;
+  }
+
+  if (updatedAt) {
+    updatedAt.textContent = State.lastFetch ? `updated ${timeAgo(new Date(State.lastFetch).toISOString())}` : 'syncing…';
+  }
+
   // Translation
   const ui = {
-    lblHeroTitle: State.activeLang === 'ur' ? 'اہم انٹیلی جنس' : 'Top Intelligence',
+    lblHeroTitle: State.activeLang === 'ur' ? 'اہم خبریں' : 'Top Stories',
   };
   
   for (const id in ui) {
@@ -720,14 +901,19 @@ function fullRender() {
   // Sidebar
   renderSidebarCategories();
   renderSidebarSources();
+  renderActiveFilters();
 
   // Widgets
+  renderBreakingQueue();
+  renderBreakingDeck();
+  renderTrending();
+  renderSourceBreakdown();
   renderLiveFeed();
   renderConflictWatch();
 
   // Header + ticker
   updateHeaderStats();
-  renderTicker(State.articles.filter(a => !EXCLUDED_CATS.has(a.category)).slice(0, 30));
+  renderTicker(applyScopeFilter(State.articles.filter(a => !EXCLUDED_CATS.has(a.category))).slice(0, 30));
 
   // Footer
   renderFooter();
@@ -773,24 +959,26 @@ function renderMarket(m) {
   const fmt = (v, dec = 0) =>
     v != null ? Number(v).toLocaleString('en-PK', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : '—';
 
-  // ── LIVE MARKET rows (top section) ────────────────────────
-  const buildLiveRow = (label, val, change, isCurrency = false) => {
-    const value = val != null ? (isCurrency ? fmt(val, 2) : fmt(val)) : '—';
-    const cls   = change > 0 ? 'm-up' : change < 0 ? 'm-down' : '';
-    const pct   = change != null ? `<span class="mw-row-pct ${cls}">${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%</span>` : '';
+  const valueCell = (label, val, change, unit = '', dec = 0, currency = true) => {
+    const cls = change > 0 ? 'm-up' : change < 0 ? 'm-down' : '';
+    const prefix = currency ? 'Rs ' : '';
+    const body = val != null ? `${prefix}${fmt(val, dec)}${unit ? ` ${unit}` : ''}` : '—';
+    const changeCell = change != null
+      ? `<span class="mw-row-pct ${cls}">${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%</span>`
+      : '';
+
     return `
       <div class="mw-row">
         <div class="mw-row-label">${label}</div>
-        <div class="mw-row-val ${cls}">${isCurrency ? 'Rs ' : ''}${value}</div>
-        <div class="mw-row-change">${pct}</div>
+        <div class="mw-row-val ${cls}">${body}</div>
+        <div class="mw-row-change" style="text-align:right;">${changeCell}</div>
       </div>`;
   };
 
-  // ── ESSENTIAL price tiles (bottom grid) ───────────────────
-  const buildTile = (label, val, unit, dec = 0) => `
+  const tileCell = (label, val, unit, dec = 0) => `
     <div class="mw-tile">
       <div class="mw-tile-label">${label}</div>
-      <div class="mw-tile-val">Rs ${fmt(val, dec)}<span class="mw-tile-unit"> ${unit}</span></div>
+      <div class="mw-tile-val">${fmt(val, dec)} <span class="mw-tile-unit">${unit}</span></div>
     </div>`;
 
   const trans = {
@@ -800,39 +988,63 @@ function renderMarket(m) {
   };
   const lbl = (l) => State.activeLang === 'ur' ? (trans[l] || l) : l;
 
+  const headlineItems = [
+    { label: lbl('USD/PKR'), val: m.usd.val != null ? `Rs ${fmt(m.usd.val, 2)}` : '—', change: m.usd.change },
+    { label: lbl('KSE-100'), val: m.kse.val != null ? fmt(m.kse.val) : '—', change: m.kse.change },
+    { label: lbl('Gold'), val: m.gold.val != null ? `Rs ${fmt(m.gold.val)}` : '—', change: null },
+  ];
+
   container.innerHTML = `
-    <div class="mw-section-header">Live Markets</div>
-    ${buildLiveRow(lbl('USD/PKR'), m.usd.val,  m.usd.change,  true)}
-    ${buildLiveRow(lbl('KSE-100'), m.kse.val,  m.kse.change)}
-    ${buildLiveRow(lbl('Gold'),    m.gold.val, null)}
-    <div class="mw-section-header">Daily Essentials</div>
-    <div class="mw-tile-grid">
-      ${buildTile(lbl('Petrol'),      m.petrol.val,      '/L',    2)}
-      ${buildTile(lbl('Diesel'),      m.diesel.val,      '/L',    2)}
-      ${buildTile(lbl('LPG'),         m.lpg.val,         '/KG',   2)}
-      ${buildTile(lbl('Electricity'), m.electricity.val, '/unit', 2)}
-      ${buildTile(lbl('Atta'),        m.atta.val,        '/10KG'   )}
-      ${buildTile(lbl('Sugar'),       m.sugar.val,       '/KG'     )}
-      ${buildTile(lbl('Rice'),        m.rice.val,        '/KG'     )}
-      ${buildTile(lbl('Chicken'),     m.chicken.val,     '/KG'     )}
+    <div class="mw-headline-strip">
+      ${headlineItems.map(it => {
+        const cls = it.change > 0 ? 'm-up' : it.change < 0 ? 'm-down' : '';
+        return `
+          <div class="mw-headline-item">
+            <div class="mw-headline-label">${it.label}</div>
+            <div class="mw-headline-val ${cls}">${it.val}</div>
+          </div>`;
+      }).join('')}
+    </div>
+
+    <div class="mw-left-panel">
+      <div class="mw-section-header">Pakistan Macro Board</div>
+      ${valueCell(lbl('USD/PKR'), m.usd.val, m.usd.change, '', 2)}
+      ${valueCell(lbl('KSE-100'), m.kse.val, m.kse.change, '', 0, false)}
+      ${valueCell(lbl('Gold / Tola'), m.gold.val, null, '', 0)}
+      ${valueCell(lbl('Petrol'), m.petrol.val, null, '/L', 2)}
+      ${valueCell(lbl('Diesel'), m.diesel.val, null, '/L', 2)}
+    </div>
+
+    <div class="mw-right-panel">
+      <div class="mw-section-header">Daily Essentials</div>
+      <div class="mw-tile-grid">
+        ${tileCell(lbl('LPG'),         m.lpg.val,         '/KG',   2)}
+        ${tileCell(lbl('Electricity'), m.electricity.val, '/unit', 2)}
+        ${tileCell(lbl('Atta'),        m.atta.val,        '/10KG'   )}
+        ${tileCell(lbl('Sugar'),       m.sugar.val,       '/KG'     )}
+        ${tileCell(lbl('Rice'),        m.rice.val,        '/KG'     )}
+        ${tileCell(lbl('Chicken'),     m.chicken.val,     '/KG'     )}
+      </div>
     </div>
   `;
 
   // ── Market Bar: ALL 11 items, duplicated for seamless loop ─
   if (bar) {
     const sep = `<span class="m-sep">◆</span>`;
+    const usdLbl = m.usd.val != null ? `Rs ${fmt(m.usd.val,2)}` : '—';
+    const kseLbl = m.kse.val != null ? fmt(m.kse.val) : '—';
     const items = [
-      { l:'USD/PKR',  d:`${fmt(m.usd.val,2)}`,                c: m.usd.change },
-      { l:'KSE-100',  d:`${fmt(m.kse.val)}`,                  c: m.kse.change },
-      { l:'GOLD/TOLA',d:`Rs ${fmt(m.gold.val)}`,              c: null },
-      { l:'PETROL',   d:`Rs ${fmt(m.petrol.val,2)}/L`,        c: null },
-      { l:'DIESEL',   d:`Rs ${fmt(m.diesel.val,2)}/L`,        c: null },
-      { l:'LPG',      d:`Rs ${fmt(m.lpg.val,2)}/KG`,          c: null },
-      { l:'ELEC',     d:`Rs ${fmt(m.electricity.val,2)}/unit`, c: null },
-      { l:'ATTA',     d:`Rs ${fmt(m.atta.val)}/10KG`,         c: null },
-      { l:'SUGAR',    d:`Rs ${fmt(m.sugar.val)}/KG`,          c: null },
-      { l:'RICE',     d:`Rs ${fmt(m.rice.val)}/KG`,           c: null },
-      { l:'CHICKEN',  d:`Rs ${fmt(m.chicken.val)}/KG`,        c: null },
+      { l:'USD/PKR',   d: usdLbl,                              c: m.usd.change  },
+      { l:'KSE-100',   d: kseLbl,                              c: m.kse.change  },
+      { l:'GOLD/TOLA', d:`Rs ${fmt(m.gold.val)}`,             c: null          },
+      { l:'PETROL',    d:`Rs ${fmt(m.petrol.val,2)}/L`,       c: null          },
+      { l:'DIESEL',    d:`Rs ${fmt(m.diesel.val,2)}/L`,       c: null          },
+      { l:'LPG',       d:`Rs ${fmt(m.lpg.val,2)}/KG`,         c: null          },
+      { l:'ELEC',      d:`Rs ${fmt(m.electricity.val,2)}/unit`, c: null        },
+      { l:'ATTA',      d:`Rs ${fmt(m.atta.val)}/10KG`,        c: null          },
+      { l:'SUGAR',     d:`Rs ${fmt(m.sugar.val)}/KG`,         c: null          },
+      { l:'RICE',      d:`Rs ${fmt(m.rice.val)}/KG`,          c: null          },
+      { l:'CHICKEN',   d:`Rs ${fmt(m.chicken.val)}/KG`,       c: null          },
     ];
     const renderItem = it => {
       const arr = it.c != null
@@ -841,6 +1053,7 @@ function renderMarket(m) {
       return `<span class="m-item"><span class="m-label">${it.l}</span><span class="m-val">${it.d}</span>${arr}</span>${sep}`;
     };
     bar.innerHTML = [...items, ...items].map(renderItem).join('');
+    setMarqueeDuration(bar, '--market-scroll-duration', 65);
   }
 }
 
@@ -872,16 +1085,18 @@ const App = {
     // Auto-refresh market every 15 min
     setInterval(() => fetchMarket(), 15 * 60 * 1000);
 
-    // Initialize Conflict Tabs
-    const conflictTabs = document.querySelectorAll('.conflict-tab');
-    conflictTabs.forEach(tab => {
+    // Unified Signals Tabs
+    const signalTabs = document.querySelectorAll('.signals-tab');
+    const signalPanels = document.querySelectorAll('.signals-panel');
+    signalTabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        const tabId = tab.getAttribute('data-tab');
-        conflictTabs.forEach(t => t.classList.remove('active'));
+        const target = tab.getAttribute('data-signal');
+        signalTabs.forEach(t => t.classList.remove('active'));
+        signalPanels.forEach(panel => panel.classList.remove('active'));
         tab.classList.add('active');
-        
-        document.getElementById('conflictReports').style.display = tabId === 'reports' ? '' : 'none';
-        document.getElementById('conflictSocial').style.display = tabId === 'social' ? '' : 'none';
+
+        const panelId = target === 'security' ? 'conflictReports' : 'liveFeedList';
+        document.getElementById(panelId)?.classList.add('active');
       });
     });
   },
@@ -926,10 +1141,37 @@ const App = {
     fullRender();
   },
 
+  setScope(scope) {
+    State.activeScope = scope;
+    updateScopeButtons();
+    fullRender();
+  },
+
   clearSearch() {
     State.searchQuery = '';
     document.getElementById('searchInput').value = '';
     document.getElementById('searchClear').style.display = 'none';
+    fullRender();
+  },
+
+  resetFilters() {
+    State.activeCategory = 'All';
+    State.activeLang = 'en';
+    State.activeScope = 'all';
+    State.activeSources = null;
+    State.searchQuery = '';
+
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    if (searchInput) searchInput.value = '';
+    if (searchClear) searchClear.style.display = 'none';
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === 'en');
+    });
+
+    updateScopeButtons();
+
     fullRender();
   },
 
@@ -964,6 +1206,12 @@ function closeSidebar() {
   document.getElementById('sidebarOverlay')?.classList.remove('visible');
 }
 
+function updateScopeButtons() {
+  document.querySelectorAll('.scope-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.scope === State.activeScope);
+  });
+}
+
 /* ═══════════════════════════════════════════════
    EVENT LISTENERS
 ═══════════════════════════════════════════════ */
@@ -988,6 +1236,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   searchClear?.addEventListener('click', () => App.clearSearch());
+  document.getElementById('resetFiltersBtn')?.addEventListener('click', () => App.resetFilters());
 
   // Language Switcher (header + sidebar both sync)
   function handleLangSwitch(lang) {
@@ -1005,6 +1254,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sidebarLangSwitcher')?.addEventListener('click', e => {
     const btn = e.target.closest('.lang-btn');
     if (btn) handleLangSwitch(btn.dataset.lang);
+  });
+
+  // Scope switch (All/Internal/External)
+  document.getElementById('scopeSwitch')?.addEventListener('click', e => {
+    const btn = e.target.closest('.scope-btn');
+    if (!btn) return;
+    App.setScope(btn.dataset.scope);
   });
 
   // Refresh
@@ -1055,6 +1311,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Set Feed active on start
   setMnavActive('mnavFeed');
+  updateScopeButtons();
 
   // Scroll progress & FAB
   window.addEventListener('scroll', () => {

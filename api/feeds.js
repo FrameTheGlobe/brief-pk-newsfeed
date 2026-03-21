@@ -35,7 +35,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ── RSS parser instance ──────────────────────────────────────────────
 const parser = new Parser({
-  timeout: 8000,  // Increased to 8s for local stability
+  timeout: 5000,  // 5s — safe margin under Vercel's 10s function limit
   headers: {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'Accept':     'application/rss+xml, application/xml, text/xml, */*',
