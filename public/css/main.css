@@ -2182,6 +2182,71 @@ body {
   background: rgba(157, 234, 255, 0.1);
 }
 
+/* ─── Briefing footer row (source + time) ─────── */
+.briefing-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 1px;
+}
+
+.briefing-source {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brand-navy);
+  opacity: 0.7;
+}
+
+/* ─── Scroll-to-top button ────────────────────── */
+.scroll-top-btn {
+  position: fixed;
+  bottom: 28px;
+  right: 24px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid var(--brand-navy);
+  background: var(--surface);
+  color: var(--brand-navy);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(26, 111, 168, 0.22);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.15s ease;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.scroll-top-btn.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.scroll-top-btn:hover {
+  background: var(--brand-navy);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .scroll-top-btn {
+  background: #112843;
+  border-color: #9deaff;
+  color: #9deaff;
+  box-shadow: 0 4px 14px rgba(157, 234, 255, 0.12);
+}
+
+[data-theme="dark"] .scroll-top-btn:hover {
+  background: #9deaff;
+  color: #071420;
+}
+
 /* ─── Mobile nav (≤640px) ─────────────────────── */
 @media (max-width: 640px) {
   .header-search-wrap { display: none; }
@@ -2189,4 +2254,5 @@ body {
   .intel-topline-right { gap: 6px; }
   .dark-toggle { padding: 3px 6px; font-size: 12px; }
   .footer-inner { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .scroll-top-btn { bottom: 16px; right: 14px; width: 34px; height: 34px; font-size: 14px; }
 }

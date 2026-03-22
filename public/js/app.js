@@ -181,7 +181,13 @@ function renderPsxPerformers(activeTab) {
   const list = performers[tab] || [];
 
   if (!list.length) {
-    el.innerHTML = `<div class="perf-empty">No ${tab} data available.</div>`;
+    const now = new Date();
+    const pktHour = parseInt(now.toLocaleTimeString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Karachi' }), 10);
+    const isMarketHours = pktHour >= 9 && pktHour < 16;
+    const msg = isMarketHours
+      ? `No ${tab} data yet — PSX feed updating`
+      : 'PSX market closed · Showing last session';
+    el.innerHTML = `<div class="perf-empty">${msg}</div>`;
     return;
   }
 
@@ -228,7 +234,10 @@ function renderTodaysBriefing(items) {
       <a class="briefing-item" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">
         <span class="briefing-cat">${escapeHtml(item.category)}</span>
         <span class="briefing-headline${isRtl ? ' rtl-text' : ''}">${escapeHtml(item.title)}</span>
-        <span class="briefing-time">${relTime(item.publishedAt)}</span>
+        <span class="briefing-foot">
+          <span class="briefing-source">${escapeHtml(item.source)}</span>
+          <span class="briefing-time">${relTime(item.publishedAt)}</span>
+        </span>
       </a>
     `;
   }).join('');
@@ -1069,8 +1078,26 @@ function bindEvents() {
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 
+function initScrollToTop() {
+  const btn = document.createElement('button');
+  btn.id = 'scrollTopBtn';
+  btn.className = 'scroll-top-btn';
+  btn.setAttribute('aria-label', 'Scroll to top');
+  btn.innerHTML = '↑';
+  document.body.appendChild(btn);
+
+  window.addEventListener('scroll', () => {
+    btn.classList.toggle('visible', window.scrollY > 300);
+  }, { passive: true });
+
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
 async function init() {
   bindEvents();
+  initScrollToTop();
   updateClock();
   setInterval(updateClock, 1000);
 
