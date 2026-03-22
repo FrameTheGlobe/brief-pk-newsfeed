@@ -144,6 +144,27 @@ body {
   letter-spacing: 0.15em;
 }
 
+.brand-beta {
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--brand-navy);
+  background: rgba(157, 234, 255, 0.3);
+  border: 1px solid var(--brand-navy);
+  padding: 2px 7px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+[data-theme="dark"] .brand-beta {
+  color: #9deaff;
+  background: rgba(157, 234, 255, 0.08);
+  border-color: rgba(157, 234, 255, 0.3);
+}
+
 .macro-stats-grid {
   flex: 1;
   min-width: 0;
