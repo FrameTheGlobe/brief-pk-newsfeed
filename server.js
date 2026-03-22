@@ -14,8 +14,14 @@ app.get('/api/news', (req, res) => newsHandler(req, res));
 app.get('/api/market', (req, res) => marketHandler(req, res));
 app.get('/api/pakistan-map', (req, res) => pakistanMapHandler(req, res));
 
-app.use('/css', express.static(path.join(__dirname, 'public/css')));
-app.use('/js', express.static(path.join(__dirname, 'public/js')));
+// No-cache for CSS/JS — matches Vercel's headers so local dev behaves identically
+const staticOpts = {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => { res.setHeader('Cache-Control', 'no-cache, must-revalidate'); }
+};
+app.use('/css', express.static(path.join(__dirname, 'public/css'), staticOpts));
+app.use('/js',  express.static(path.join(__dirname, 'public/js'),  staticOpts));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'), { etag: false, lastModified: false });

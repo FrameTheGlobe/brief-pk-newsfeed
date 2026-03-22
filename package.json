@@ -1,12 +1,14 @@
 {
   "name": "brief-pk-newsfeed",
-  "version": "4.1.7",
+  "version": "4.1.8",
   "private": true,
   "description": "Pakistan Intelligence Dashboard with open-feed aggregation",
   "scripts": {
     "dev": "node server.js",
     "build": "echo \"No build step required\"",
-    "start": "node server.js"
+    "start": "node server.js",
+    "stamp": "node scripts/stamp-version.js",
+    "predeploy": "npm run stamp"
   },
   "dependencies": {
     "express": "^4.21.2"
