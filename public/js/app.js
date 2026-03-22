@@ -186,13 +186,14 @@ function renderPsxPerformers(activeTab) {
   }
 
   el.innerHTML = `<div class="perf-list">${list.slice(0, 10).map(p => {
-    const chg = Number(p.changePct);
+    const chg = Number(p.changePct ?? p.pctChange ?? p.change_pct);
+    const price = p.price ?? p.value ?? p.last;
     const cls = Number.isFinite(chg) ? (chg >= 0 ? 'up' : 'down') : '';
     const sign = Number.isFinite(chg) && chg > 0 ? '+' : '';
     return `
       <div class="perf-row">
         <span class="perf-sym">${escapeHtml(p.symbol || '--')}</span>
-        <span class="perf-val">${fmtNum(p.value, 2)}</span>
+        <span class="perf-val">${fmtNum(price, 2)}</span>
         <span class="perf-chg ${cls}">${Number.isFinite(chg) ? `${sign}${chg.toFixed(2)}%` : '--'}</span>
       </div>
     `;
