@@ -1,18 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="brief. Pakistan Intelligence Dashboard" />
-  <title>brief. | Pakistan Intelligence Dashboard</title>
+  <meta name="description" content="brief.pk — Pakistan Intelligence Dashboard. Live news, markets, Pakistan Nerve Center." />
+  <meta property="og:title" content="brief.pk | Pakistan Intelligence Dashboard" />
+  <meta property="og:description" content="Live Pakistan news intelligence: politics, economy, security, markets, and the Pakistan Nerve Center." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://briefpknews.xyz" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:site" content="@brief_pk" />
+  <title>brief.pk | Pakistan Intelligence Dashboard</title>
+
+  <!-- Favicon (SVG inline data URI — no file needed) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a2744'/><text x='5' y='23' font-size='20' font-family='Georgia,serif' font-weight='900' fill='%23ffffff'>b</text><text x='17' y='23' font-size='9' font-family='Georgia,serif' font-weight='700' fill='%23cc1020'>.</text><text x='20' y='23' font-size='9' font-family='monospace' font-weight='700' fill='%23cc1020'>pk</text></svg>" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
   <div class="page-bg"></div>
 
+  <!-- ═══ HEADER ════════════════════════════════════════════════ -->
   <header class="intel-header">
     <div class="intel-topline">
       <div class="intel-topline-group">
@@ -20,10 +31,12 @@
         <span class="top-sep">|</span>
         <span class="top-meta" id="headlineCount">-- headlines</span>
         <span class="top-meta" id="sourceCount">-- sources</span>
-        <span class="top-meta">DB: SYNCED</span>
-        <span class="top-meta">Nodes: 4 Active</span>
+        <span class="top-meta live-dot-wrap"><span class="live-dot"></span> PKT</span>
       </div>
-      <div class="top-clock" id="headerClock">--:--:--</div>
+      <div class="intel-topline-right">
+        <span class="top-clock" id="headerClock">--:--:--</span>
+        <button class="dark-toggle" id="darkToggle" title="Toggle dark mode" aria-label="Toggle dark mode">◐</button>
+      </div>
     </div>
 
     <div class="intel-mainbar">
@@ -35,57 +48,38 @@
       </div>
 
       <div class="macro-stats-grid">
-        <div class="stat-blip">
-          <span class="sb-label">USD/PKR</span>
-          <span class="sb-val" id="hdrUsdPkr">--</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">KSE-100</span>
-          <span class="sb-val" id="hdrKse100">--</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">Brent</span>
-          <span class="sb-val" id="hdrBrent">--</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">Gasoline</span>
-          <span class="sb-val" id="hdrGasoline">--</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">LNG/LPG</span>
-          <span class="sb-val" id="hdrLngLpg">--</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">Fuel Px Index</span>
-          <span class="sb-val" id="hdrFuelPressure">--/100</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">Energy 24h</span>
-          <span class="sb-val" id="hdrEnergy24h">--</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">IMF 24h</span>
-          <span class="sb-val" id="hdrImf24h">--</span>
-        </div>
-        <div class="stat-blip">
-          <span class="sb-label">P+D 24h</span>
-          <span class="sb-val" id="hdrFuelMentions24h">--</span>
-        </div>
+        <div class="stat-blip"><span class="sb-label">USD/PKR</span><span class="sb-val" id="hdrUsdPkr">--</span></div>
+        <div class="stat-blip"><span class="sb-label">KSE-100</span><span class="sb-val" id="hdrKse100">--</span></div>
+        <div class="stat-blip"><span class="sb-label">Brent</span><span class="sb-val" id="hdrBrent">--</span></div>
+        <div class="stat-blip"><span class="sb-label">Gasoline</span><span class="sb-val" id="hdrGasoline">--</span></div>
+        <div class="stat-blip"><span class="sb-label">LNG/LPG</span><span class="sb-val" id="hdrLngLpg">--</span></div>
+        <div class="stat-blip"><span class="sb-label">Fuel Px</span><span class="sb-val" id="hdrFuelPressure">--/100</span></div>
+        <div class="stat-blip"><span class="sb-label">Energy 24h</span><span class="sb-val" id="hdrEnergy24h">--</span></div>
+        <div class="stat-blip"><span class="sb-label">IMF 24h</span><span class="sb-val" id="hdrImf24h">--</span></div>
+        <div class="stat-blip"><span class="sb-label">P+D 24h</span><span class="sb-val" id="hdrFuelMentions24h">--</span></div>
       </div>
 
-      <div class="header-social-links">
-        <a href="https://x.com/brief_pk" target="_blank">@brief_pk</a>
-        <a href="https://brief.pk" target="_blank">Substack</a>
+      <div class="header-actions">
+        <div class="header-search-wrap">
+          <input type="search" id="searchInput" class="header-search" placeholder="Search headlines…" autocomplete="off" aria-label="Search headlines" />
+          <span class="search-icon">⌕</span>
+          <button class="search-clear" id="searchClear" aria-label="Clear search">✕</button>
+        </div>
+        <div class="header-social-links">
+          <a href="https://brief.pk" target="_blank" rel="noopener noreferrer" class="substack-cta">Read brief.pk →</a>
+          <a href="https://x.com/brief_pk" target="_blank" rel="noopener noreferrer">@brief_pk</a>
+        </div>
       </div>
     </div>
   </header>
 
+  <!-- ═══ TICKERS ═══════════════════════════════════════════════ -->
   <section class="ticker-stack">
     <section class="market-ticker-wrap">
-      <div class="ticker-title">Markets + Commodities</div>
+      <div class="ticker-title">Markets</div>
       <div class="ticker-viewport" id="marketTickerViewport">
         <div class="ticker-track" id="marketTickerTrack">
-          <span class="ticker-chip">Loading open market feeds...</span>
+          <span class="ticker-chip">Loading open market feeds…</span>
         </div>
       </div>
     </section>
@@ -94,134 +88,107 @@
       <div class="flash-title">Flash</div>
       <div class="flash-viewport" id="flashTickerViewport">
         <div class="flash-track" id="flashTickerTrack">
-          <span class="flash-item">Loading Pakistan news feeds...</span>
+          <span class="flash-item">Loading Pakistan news feeds…</span>
         </div>
       </div>
-      <button class="refresh-btn" id="refreshBtn" type="button">Refresh</button>
+      <button class="refresh-btn" id="refreshBtn" type="button">↺ Refresh</button>
     </section>
   </section>
 
+  <!-- ═══ TV CHART STRIP ════════════════════════════════════════ -->
   <section class="tv-charts-strip">
     <div class="tv-widget-card">
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-        {
-          "symbol": "CAPITALCOM:DXY",
-          "width": "100%",
-          "height": "100%",
-          "locale": "en",
-          "dateRange": "1M",
-          "colorTheme": "light",
-          "isTransparent": true,
-          "autosize": true,
-          "largeChartUrl": "",
-          "show_popup_button": false,
-          "enable_publishing": false
-        }
-        </script>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"CAPITALCOM:DXY","width":"100%","height":"100%","locale":"en","dateRange":"1M","colorTheme":"light","isTransparent":true,"autosize":true,"show_popup_button":false}</script>
       </div>
     </div>
     <div class="tv-widget-card">
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-        {
-          "symbol": "FX_IDC:USDPKR",
-          "width": "100%",
-          "height": "100%",
-          "locale": "en",
-          "dateRange": "1M",
-          "colorTheme": "light",
-          "isTransparent": true,
-          "autosize": true,
-          "largeChartUrl": "",
-          "show_popup_button": false,
-          "enable_publishing": false
-        }
-        </script>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"FX_IDC:USDPKR","width":"100%","height":"100%","locale":"en","dateRange":"1M","colorTheme":"light","isTransparent":true,"autosize":true,"show_popup_button":false}</script>
       </div>
     </div>
     <div class="tv-widget-card">
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-        {
-          "symbol": "OANDA:BCOUSD",
-          "width": "100%",
-          "height": "100%",
-          "locale": "en",
-          "dateRange": "1M",
-          "colorTheme": "light",
-          "isTransparent": true,
-          "autosize": true,
-          "largeChartUrl": "",
-          "show_popup_button": false,
-          "enable_publishing": false
-        }
-        </script>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"OANDA:BCOUSD","width":"100%","height":"100%","locale":"en","dateRange":"1M","colorTheme":"light","isTransparent":true,"autosize":true,"show_popup_button":false}</script>
       </div>
     </div>
     <div class="tv-widget-card">
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-        {
-          "symbol": "OANDA:XAUUSD",
-          "width": "100%",
-          "height": "100%",
-          "locale": "en",
-          "dateRange": "1M",
-          "colorTheme": "light",
-          "isTransparent": true,
-          "autosize": true,
-          "largeChartUrl": "",
-          "show_popup_button": false,
-          "enable_publishing": false
-        }
-        </script>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"OANDA:XAUUSD","width":"100%","height":"100%","locale":"en","dateRange":"1M","colorTheme":"light","isTransparent":true,"autosize":true,"show_popup_button":false}</script>
       </div>
     </div>
   </section>
 
+  <!-- ═══ DASHBOARD SHELL ═══════════════════════════════════════ -->
   <main class="dashboard-shell">
+
+    <!-- ── LEFT RAIL ─────────────────────────────────────────── -->
     <aside class="left-rail">
+
+      <!-- Today's Briefing (intelligence summary) -->
+      <div class="rail-block briefing-block" id="todaysBriefingBlock">
+        <div class="rail-label rail-label-accent">Today's Briefing</div>
+        <div id="todaysBriefing" class="todays-briefing">
+          <div class="briefing-skel skel"></div>
+        </div>
+      </div>
+
+      <!-- Latest Stories (was "Most Popular" but was just recency) -->
       <div class="rail-block popular-widget">
-        <div class="rail-label">Most Popular</div>
+        <div class="rail-label">Latest Stories</div>
         <div class="popular-tabs">
           <button class="pop-tab active" data-period="today">Today</button>
           <button class="pop-tab" data-period="yesterday">Yesterday</button>
-          <button class="pop-tab" data-period="3d">3D</button>
+          <button class="pop-tab" data-period="3d">3 Days</button>
         </div>
         <div id="popularNews" class="popular-list"></div>
       </div>
 
+      <!-- Pakistan Pulse -->
       <div class="rail-block pulse-widget">
         <div class="rail-label">Pakistan Pulse</div>
         <label class="focus-toggle" for="focusModeToggle">
           <input id="focusModeToggle" type="checkbox" checked />
           <span>Strict Pakistan Focus</span>
         </label>
+        <div class="focus-count" id="focusCountBadge"></div>
         <div id="pulseBoard" class="pulse-board"></div>
       </div>
 
+      <!-- Narrative Map -->
       <div class="rail-block">
         <div class="rail-label">Narrative Map</div>
         <div id="narrativeMap" class="narrative-map"></div>
       </div>
 
+      <!-- Categories (now interactive) -->
       <div class="rail-block">
-        <div class="rail-label">Categories</div>
+        <div class="rail-label-row">
+          <span class="rail-label">Categories</span>
+          <button class="clear-filter-btn" id="clearCategoryBtn" style="display:none">✕ Clear</button>
+        </div>
         <ul class="nav-list" id="categoryNav"></ul>
       </div>
 
+      <!-- Sources (now interactive) -->
       <div class="rail-block">
-        <div class="rail-label">Sources</div>
+        <div class="rail-label-row">
+          <span class="rail-label">Sources</span>
+          <button class="clear-filter-btn" id="clearSourceBtn" style="display:none">✕ Clear</button>
+        </div>
         <ul class="nav-list" id="sourceNav"></ul>
       </div>
+
     </aside>
 
+    <!-- ── MAIN LANE ──────────────────────────────────────────── -->
     <section class="main-lane">
+
+      <!-- USD/PKR Chart + PSX Signal Matrix -->
       <section class="interactive-tv-grid">
         <article class="large-tv-card">
           <div class="lane-head">
@@ -233,43 +200,57 @@
             <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
             <script type="text/javascript">
             new TradingView.widget({
-              "autosize": true,
-              "symbol": "FX_IDC:USDPKR",
-              "interval": "D",
-              "timezone": "Asia/Karachi",
-              "theme": "light",
-              "style": "2",
-              "locale": "en",
-              "enable_publishing": false,
-              "hide_top_toolbar": true,
-              "hide_side_toolbar": true,
-              "hide_legend": true,
-              "save_image": false,
-              "container_id": "tradingview_kse100",
-              "show_popup_button": false,
-              "enable_publishing": false
+              "autosize": true, "symbol": "FX_IDC:USDPKR", "interval": "D",
+              "timezone": "Asia/Karachi", "theme": "light", "style": "2",
+              "locale": "en", "enable_publishing": false,
+              "hide_top_toolbar": true, "hide_side_toolbar": true,
+              "hide_legend": true, "save_image": false,
+              "container_id": "tradingview_kse100", "show_popup_button": false
             });
             </script>
           </div>
         </article>
         <article class="ai-stats-card">
-          <div class="lane-head"><h2>PSX Live Signal Matrix</h2></div>
+          <div class="lane-head"><h2>PSX Live Signal Matrix</h2><span class="lane-head-badge">Corporate Intel</span></div>
           <div id="psxSignals" class="intel-signals-pack"></div>
         </article>
       </section>
 
-      <div class="lane-block">
+      <!-- Search Results (hidden by default) -->
+      <div class="lane-block" id="searchResultsBlock" style="display:none">
         <div class="lane-head">
-          <h2>Breaking Queue</h2>
-          <span id="updatedAt">--</span>
+          <h2>Search Results <span class="search-query-label" id="searchQueryLabel"></span></h2>
+          <button class="clear-filter-btn" id="clearSearchBtn">✕ Clear</button>
         </div>
-        <div id="breakingQueue" class="breaking-queue"></div>
+        <div id="searchResults" class="breaking-queue"></div>
       </div>
 
-      <div id="categorySections" class="category-sections"></div>
+      <!-- Breaking Queue -->
+      <div class="lane-block" id="breakingBlock">
+        <div class="lane-head">
+          <h2>Breaking Queue</h2>
+          <span id="updatedAt" class="lane-head-badge">--</span>
+        </div>
+        <div id="breakingQueue" class="breaking-queue">
+          <!-- skeleton -->
+          <div class="skel-row"><div class="skel" style="height:52px;border-radius:6px;"></div></div>
+          <div class="skel-row"><div class="skel" style="height:52px;border-radius:6px;"></div></div>
+          <div class="skel-row"><div class="skel" style="height:52px;border-radius:6px;"></div></div>
+        </div>
+      </div>
+
+      <!-- Category Sections -->
+      <div id="categorySections" class="category-sections">
+        <div class="skel-row"><div class="skel" style="height:28px;border-radius:4px;margin-bottom:8px;"></div></div>
+        <div class="skel-row"><div class="skel" style="height:200px;border-radius:6px;"></div></div>
+      </div>
+
     </section>
 
+    <!-- ── RIGHT RAIL ─────────────────────────────────────────── -->
     <aside class="right-rail">
+
+      <!-- Pakistan Nerve Center -->
       <div class="rail-widget">
         <div class="widget-head">Pakistan Nerve Center<span class="lane-head-badge">Beta</span></div>
         <div class="pk-map-head">
@@ -282,37 +263,74 @@
         <div id="pkMapHotspots" class="pk-map-hotspots"></div>
       </div>
 
+      <!-- PSX Performers (new) -->
+      <div class="rail-widget">
+        <div class="widget-head">PSX Performers<span class="lane-head-badge">Live</span></div>
+        <div class="perf-tabs">
+          <button class="perf-tab active" data-perf="gainers">Gainers</button>
+          <button class="perf-tab" data-perf="losers">Losers</button>
+          <button class="perf-tab" data-perf="active">Active</button>
+        </div>
+        <div id="psxPerformers" class="psx-performers"></div>
+      </div>
+
+      <!-- Trend Radar -->
       <div class="rail-widget">
         <div class="widget-head">Trend Radar</div>
         <ul id="trendRadar" class="widget-list"></ul>
       </div>
 
+      <!-- Source Dominance -->
       <div class="rail-widget">
         <div class="widget-head">Source Dominance</div>
         <div id="sourceDominance" class="source-dominance"></div>
       </div>
 
+      <!-- Market Snapshot -->
       <div class="rail-widget">
         <div class="widget-head">Market Snapshot<span class="lane-head-badge">Live</span></div>
         <div id="marketSnapshot" class="market-snapshot"></div>
       </div>
 
+      <!-- Live Feed -->
       <div class="rail-widget">
         <div class="widget-head">Live Feed</div>
         <ul id="liveFeed" class="live-feed"></ul>
       </div>
 
+      <!-- Category Activity -->
       <div class="rail-widget">
         <div class="widget-head">Category Activity</div>
         <div id="categoryActivity" class="category-activity"></div>
       </div>
 
+      <!-- Trending Keywords -->
       <div class="rail-widget">
         <div class="widget-head">Trending Keywords</div>
         <div id="keywordSignals" class="keyword-pills"></div>
       </div>
+
     </aside>
   </main>
+
+  <!-- ═══ FOOTER ════════════════════════════════════════════════ -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="footer-logo">brief<span class="brand-dot">.pk</span></span>
+        <span class="footer-tagline">Pakistan News Intelligence</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://brief.pk" target="_blank" rel="noopener noreferrer">Substack</a>
+        <span class="footer-sep">·</span>
+        <a href="https://x.com/brief_pk" target="_blank" rel="noopener noreferrer">@brief_pk</a>
+        <span class="footer-sep">·</span>
+        <a href="https://briefpknews.xyz" target="_blank" rel="noopener noreferrer">briefpknews.xyz</a>
+      </div>
+      <div class="footer-sources-label">Sources: <span id="footerSourceList">Dawn · Geo · ARY · Express Tribune · Business Recorder · Al Jazeera · BBC · Reuters</span></div>
+      <div class="footer-note">Data refreshes every 4 minutes. Market data via Yahoo Finance, Stooq, FRED. Weather via Open-Meteo.</div>
+    </div>
+  </footer>
 
   <script src="/js/app.js" defer></script>
 </body>

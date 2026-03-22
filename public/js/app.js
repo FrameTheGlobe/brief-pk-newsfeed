@@ -1,4 +1,4 @@
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 240_000;
 const BREAKING_LIMIT = 16;
 const CARD_LIMIT = 12;
 const LIVE_LIMIT = 36;
@@ -9,6 +9,9 @@ const STOPWORDS = new Set([
   'news', 'report', 'reports', 'update', 'video', 'live', 'more', 'than', 'they', 'you', 'your'
 ]);
 
+const CACHE_KEY = 'brief-pk-data-v2';
+const CACHE_TTL = 5 * 60 * 1000;
+
 const state = {
   updatedAt: null,
   news: [],
@@ -16,8 +19,13 @@ const state = {
   pakistanMap: null,
   strictFocus: true,
   popPeriod: 'today',
-  mapLayer: 'weather'
+  mapLayer: 'weather',
+  activeCategory: null,
+  activeSource: null,
+  searchQuery: ''
 };
+
+// ── Utils ──────────────────────────────────────────────────────────────────
 
 function escapeHtml(text) {
   return String(text || '')
@@ -34,11 +42,11 @@ function relTime(iso) {
   const diffMs = Date.now() - t;
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'now';
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  return `${days}d`;
+  return `${days}d ago`;
 }
 
 function fmtNum(value, digits = 2) {
@@ -84,13 +92,21 @@ function updateClock() {
   setText('headerClock', pkt);
 }
 
+// ── Filtering ──────────────────────────────────────────────────────────────
+
 function filteredNews() {
   return state.news.filter((item) => {
     if (state.strictFocus) {
       if ((item.relevanceScore || 0) < 7) return false;
       if (item.scope === 'external' && !item.directPakistanSignal) return false;
     }
-
+    if (state.activeCategory && item.category !== state.activeCategory) return false;
+    if (state.activeSource && item.source !== state.activeSource) return false;
+    if (state.searchQuery) {
+      const q = state.searchQuery.toLowerCase();
+      const text = `${item.title} ${item.description || ''}`.toLowerCase();
+      if (!text.includes(q)) return false;
+    }
     return true;
   });
 }
@@ -109,6 +125,27 @@ function inLastMinutes(item, minutes) {
   if (!Number.isFinite(t)) return false;
   return t >= (Date.now() - minutes * 60_000);
 }
+
+// ── Cache ──────────────────────────────────────────────────────────────────
+
+function saveCache(data) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch { /* quota or private mode */ }
+}
+
+function loadCache() {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch { /* malformed */ }
+  return null;
+}
+
+// ── Renderers ──────────────────────────────────────────────────────────────
 
 function renderPsxSignals() {
   const el = document.getElementById('psxSignals');
@@ -130,7 +167,124 @@ function renderPsxSignals() {
   `).join('');
 }
 
+function renderPsxPerformers(activeTab) {
+  const el = document.getElementById('psxPerformers');
+  if (!el) return;
 
+  const performers = state.market?.performers;
+  if (!performers) {
+    el.innerHTML = '<div class="perf-empty">PSX data loading…</div>';
+    return;
+  }
+
+  const tab = activeTab || document.querySelector('.perf-tab.active')?.dataset?.perf || 'gainers';
+  const list = performers[tab] || [];
+
+  if (!list.length) {
+    el.innerHTML = `<div class="perf-empty">No ${tab} data available.</div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="perf-list">${list.slice(0, 10).map(p => {
+    const chg = Number(p.changePct);
+    const cls = Number.isFinite(chg) ? (chg >= 0 ? 'up' : 'down') : '';
+    const sign = Number.isFinite(chg) && chg > 0 ? '+' : '';
+    return `
+      <div class="perf-row">
+        <span class="perf-sym">${escapeHtml(p.symbol || '--')}</span>
+        <span class="perf-val">${fmtNum(p.value, 2)}</span>
+        <span class="perf-chg ${cls}">${Number.isFinite(chg) ? `${sign}${chg.toFixed(2)}%` : '--'}</span>
+      </div>
+    `;
+  }).join('')}</div>`;
+}
+
+function renderTodaysBriefing(items) {
+  const el = document.getElementById('todaysBriefing');
+  if (!el) return;
+
+  if (!items.length) {
+    el.innerHTML = '<div class="briefing-empty">Awaiting feed data…</div>';
+    return;
+  }
+
+  // Pick top unique-category items (prefer high priority)
+  const high = items.filter(n => n.priority === 'high');
+  const pool = high.length >= 3 ? high : items;
+  const seenCats = new Set();
+  const top = [];
+  for (const item of pool) {
+    if (!seenCats.has(item.category)) {
+      seenCats.add(item.category);
+      top.push(item);
+    }
+    if (top.length >= 5) break;
+  }
+
+  el.innerHTML = top.map(item => {
+    const isRtl = /[\u0600-\u06FF]/.test(item.title);
+    return `
+      <a class="briefing-item" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">
+        <span class="briefing-cat">${escapeHtml(item.category)}</span>
+        <span class="briefing-headline${isRtl ? ' rtl-text' : ''}">${escapeHtml(item.title)}</span>
+        <span class="briefing-time">${relTime(item.publishedAt)}</span>
+      </a>
+    `;
+  }).join('');
+}
+
+function renderFocusCount() {
+  const badge = document.getElementById('focusCountBadge');
+  if (!badge) return;
+  const filtered = filteredNews().length;
+  const total = state.news.length;
+  if (state.strictFocus) {
+    badge.textContent = `Showing ${filtered} of ${total} stories`;
+  } else {
+    badge.textContent = `Showing all ${total} stories`;
+  }
+}
+
+function renderSearchResults() {
+  const block = document.getElementById('searchResultsBlock');
+  const resultsEl = document.getElementById('searchResults');
+  const queryLabel = document.getElementById('searchQueryLabel');
+  const breakingBlock = document.getElementById('breakingBlock');
+
+  if (!block || !resultsEl) return;
+
+  if (!state.searchQuery) {
+    block.style.display = 'none';
+    if (breakingBlock) breakingBlock.style.display = '';
+    return;
+  }
+
+  block.style.display = '';
+  if (breakingBlock) breakingBlock.style.display = 'none';
+
+  if (queryLabel) queryLabel.textContent = `"${state.searchQuery}"`;
+
+  const results = filteredNews();
+  if (!results.length) {
+    resultsEl.innerHTML = '<div class="breaking-item"><div class="breaking-title">No results found for that query.</div></div>';
+    return;
+  }
+
+  resultsEl.innerHTML = results.slice(0, 30).map((n, idx) => `
+    <a class="breaking-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">
+      <div class="breaking-rank">${String(idx + 1).padStart(2, '0')}</div>
+      <div>
+        <div class="breaking-title">${escapeHtml(n.title)}</div>
+        <div class="badges">
+          <span class="badge ${escapeHtml(n.priority)}">${escapeHtml(n.priority)}</span>
+          <span class="badge">${escapeHtml(n.category)}</span>
+          <span class="badge">${escapeHtml(n.source)}</span>
+        </div>
+      </div>
+      <div class="time-col">${relTime(n.publishedAt)}</div>
+    </a>
+  `).join('');
+}
 
 function renderCategoryActivity(items) {
   const el = document.getElementById('categoryActivity');
@@ -140,12 +294,12 @@ function renderCategoryActivity(items) {
   const max = counts[0]?.[1] || 1;
 
   el.innerHTML = counts.map(([cat, count]) => {
-    const pct = Math.round((count / max) * 100);
+    const p = Math.round((count / max) * 100);
     return `
       <div class="cat-bar-row">
         <span class="cat-bar-label">${escapeHtml(cat)}</span>
         <div class="cat-bar-track">
-          <div class="cat-bar-fill" style="width:${pct}%"></div>
+          <div class="cat-bar-fill" style="width:${p}%"></div>
         </div>
         <span class="cat-bar-count">${count}</span>
       </div>
@@ -298,7 +452,7 @@ function renderBreaking(items) {
 
   const rows = items.slice(0, BREAKING_LIMIT);
   if (!rows.length) {
-    el.innerHTML = '<div class="breaking-item"><div class="breaking-title">No items</div></div>';
+    el.innerHTML = '<div class="breaking-item"><div class="breaking-title">No items matching current filters</div></div>';
     return;
   }
 
@@ -327,8 +481,13 @@ function renderCategories(items) {
   const el = document.getElementById('categorySections');
   if (!el) return;
 
+  // If a category is active, only show that one
+  const pool = state.activeCategory
+    ? items.filter(n => n.category === state.activeCategory)
+    : items;
+
   const byCat = new Map();
-  for (const n of items) {
+  for (const n of pool) {
     if (!byCat.has(n.category)) byCat.set(n.category, []);
     byCat.get(n.category).push(n);
   }
@@ -430,34 +589,67 @@ function renderLeftRail(items) {
   const srcEl = document.getElementById('sourceNav');
   const pulseEl = document.getElementById('pulseBoard');
   const narrativeEl = document.getElementById('narrativeMap');
+  const clearCatBtn = document.getElementById('clearCategoryBtn');
+  const clearSrcBtn = document.getElementById('clearSourceBtn');
+
+  // All items (unfiltered by category/source) for nav counts
+  const allFiltered = state.news.filter((item) => {
+    if (state.strictFocus) {
+      if ((item.relevanceScore || 0) < 7) return false;
+      if (item.scope === 'external' && !item.directPakistanSignal) return false;
+    }
+    return true;
+  });
 
   if (catEl) {
-    const rows = aggregateCounts(items, (n) => n.category).slice(0, 14);
+    const rows = aggregateCounts(allFiltered, (n) => n.category).slice(0, 14);
     catEl.innerHTML = rows.map(([k, c]) => `
-      <li>
+      <li class="nav-item${state.activeCategory === k ? ' active' : ''}" data-cat="${escapeHtml(k)}">
         <span>${escapeHtml(k)}</span>
         <span class="count">${c}</span>
       </li>
     `).join('');
+
+    catEl.querySelectorAll('.nav-item').forEach(li => {
+      li.addEventListener('click', () => {
+        const cat = li.dataset.cat;
+        state.activeCategory = state.activeCategory === cat ? null : cat;
+        if (clearCatBtn) clearCatBtn.style.display = state.activeCategory ? '' : 'none';
+        renderAll();
+      });
+    });
+
+    if (clearCatBtn) clearCatBtn.style.display = state.activeCategory ? '' : 'none';
   }
 
   if (srcEl) {
-    const rows = aggregateCounts(items, (n) => n.source).slice(0, 14);
+    const rows = aggregateCounts(allFiltered, (n) => n.source).slice(0, 14);
     srcEl.innerHTML = rows.map(([k, c]) => `
-      <li>
+      <li class="nav-item${state.activeSource === k ? ' active' : ''}" data-src="${escapeHtml(k)}">
         <span>${escapeHtml(k)}</span>
         <span class="count">${c}</span>
       </li>
     `).join('');
+
+    srcEl.querySelectorAll('.nav-item').forEach(li => {
+      li.addEventListener('click', () => {
+        const src = li.dataset.src;
+        state.activeSource = state.activeSource === src ? null : src;
+        if (clearSrcBtn) clearSrcBtn.style.display = state.activeSource ? '' : 'none';
+        renderAll();
+      });
+    });
+
+    if (clearSrcBtn) clearSrcBtn.style.display = state.activeSource ? '' : 'none';
   }
 
   if (pulseEl) {
     const now = Date.now();
     const hr = 60 * 60 * 1000;
-    const window6h = items.filter((n) => now - new Date(n.publishedAt).getTime() <= 6 * hr);
-    const highPriority = items.filter((n) => n.priority === 'high').length;
-    const internalShare = items.length ? Math.round((items.filter((n) => n.scope === 'internal').length / items.length) * 100) : 0;
-    const energyShare = items.length ? Math.round((items.filter((n) => n.category === 'Energy' || n.category === 'Markets').length / items.length) * 100) : 0;
+    const window6h = allFiltered.filter((n) => now - new Date(n.publishedAt).getTime() <= 6 * hr);
+    const highPriority = allFiltered.filter((n) => n.priority === 'high').length;
+    const internalShare = allFiltered.length ? Math.round((allFiltered.filter((n) => n.scope === 'internal').length / allFiltered.length) * 100) : 0;
+    const energyShare = allFiltered.length ? Math.round((allFiltered.filter((n) => n.category === 'Energy' || n.category === 'Markets').length / allFiltered.length) * 100) : 0;
 
     pulseEl.innerHTML = `
       <div class="pulse-grid">
@@ -470,7 +662,7 @@ function renderLeftRail(items) {
   }
 
   if (narrativeEl) {
-    const topCats = aggregateCounts(items, (n) => n.category).slice(0, 5);
+    const topCats = aggregateCounts(allFiltered, (n) => n.category).slice(0, 5);
     const max = topCats[0]?.[1] || 1;
     narrativeEl.innerHTML = topCats.map(([label, count]) => {
       const width = Math.max(12, Math.round((count / max) * 100));
@@ -503,7 +695,7 @@ function renderPopularNews() {
   const items = (pool.length > 0 ? pool : state.news).slice(0, 8);
   el.innerHTML = items.map(n => `
     <a href="${escapeHtml(n.url)}" class="pop-item" target="_blank">
-      ${n.thumbnail ? `<img src="${escapeHtml(n.thumbnail)}" class="pop-img" onerror="this.src='/favicon.ico'"/>` : '<div class="pop-img"></div>'}
+      ${n.thumbnail ? `<img src="${escapeHtml(n.thumbnail)}" class="pop-img" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'"/>` : '<div class="pop-img"></div>'}
       <div class="pop-content">
         <div class="pop-title">${escapeHtml(n.title)}</div>
       </div>
@@ -673,6 +865,8 @@ function renderPakistanNerveCenter() {
   `;
 }
 
+// ── renderAll ──────────────────────────────────────────────────────────────
+
 function renderAll() {
   const items = filteredNews();
   renderMarketTicker();
@@ -690,23 +884,27 @@ function renderAll() {
   renderKeywordSignals(items);
   renderLiveFeed(items);
   renderLeftRail(items);
+  renderTodaysBriefing(items);
+  renderPsxPerformers();
+  renderFocusCount();
+  renderSearchResults();
 
   const updated = document.getElementById('updatedAt');
   if (updated) updated.textContent = state.updatedAt ? new Date(state.updatedAt).toLocaleTimeString() : '--';
 }
 
+// ── Data fetching ──────────────────────────────────────────────────────────
+
 async function fetchNews() {
   const res = await fetch('/api/news', { cache: 'no-store' });
   if (!res.ok) throw new Error(`news_http_${res.status}`);
-  const data = await res.json();
-  return data;
+  return await res.json();
 }
 
 async function fetchMarket() {
   const res = await fetch('/api/market', { cache: 'no-store' });
   if (!res.ok) throw new Error(`market_http_${res.status}`);
-  const data = await res.json();
-  return data;
+  return await res.json();
 }
 
 async function fetchPakistanMap() {
@@ -733,10 +931,20 @@ async function refreshData() {
     state.updatedAt = mapRes.value.updatedAt || state.updatedAt;
   }
 
+  saveCache({
+    news: state.news,
+    newsUpdatedAt: state.updatedAt,
+    market: state.market,
+    map: state.pakistanMap
+  });
+
   renderAll();
 }
 
+// ── Event binding ──────────────────────────────────────────────────────────
+
 function bindEvents() {
+  // Focus toggle
   const focusToggle = document.getElementById('focusModeToggle');
   if (focusToggle) {
     focusToggle.checked = state.strictFocus;
@@ -746,6 +954,7 @@ function bindEvents() {
     });
   }
 
+  // Refresh button
   const refreshBtn = document.getElementById('refreshBtn');
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
@@ -754,6 +963,7 @@ function bindEvents() {
     });
   }
 
+  // Popular period tabs
   const popTabs = document.querySelectorAll('.pop-tab');
   popTabs.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -763,6 +973,7 @@ function bindEvents() {
     });
   });
 
+  // Pakistan map layer buttons
   const layerBtns = document.querySelectorAll('.pk-layer-btn');
   layerBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -774,12 +985,104 @@ function bindEvents() {
       renderPakistanNerveCenter();
     });
   });
+
+  // Dark mode toggle
+  const darkToggle = document.getElementById('darkToggle');
+  if (darkToggle) {
+    const savedTheme = sessionStorage.getItem('brief-pk-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    darkToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      sessionStorage.setItem('brief-pk-theme', next);
+    });
+  }
+
+  // Search input with debounce
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+  let searchDebounce;
+
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        state.searchQuery = e.target.value.trim();
+        if (searchClear) searchClear.style.display = state.searchQuery ? '' : 'none';
+        renderAll();
+      }, 250);
+    });
+  }
+
+  if (searchClear) {
+    searchClear.style.display = 'none';
+    searchClear.addEventListener('click', () => {
+      state.searchQuery = '';
+      if (searchInput) searchInput.value = '';
+      searchClear.style.display = 'none';
+      renderAll();
+    });
+  }
+
+  // Clear search from results block
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', () => {
+      state.searchQuery = '';
+      if (searchInput) searchInput.value = '';
+      if (searchClear) searchClear.style.display = 'none';
+      renderAll();
+    });
+  }
+
+  // PSX Performers tabs
+  const perfTabs = document.querySelectorAll('.perf-tab');
+  perfTabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      perfTabs.forEach(b => b.classList.toggle('active', b === btn));
+      renderPsxPerformers(btn.dataset.perf);
+    });
+  });
+
+  // Clear category filter
+  const clearCatBtn = document.getElementById('clearCategoryBtn');
+  if (clearCatBtn) {
+    clearCatBtn.addEventListener('click', () => {
+      state.activeCategory = null;
+      clearCatBtn.style.display = 'none';
+      renderAll();
+    });
+  }
+
+  // Clear source filter
+  const clearSrcBtn = document.getElementById('clearSourceBtn');
+  if (clearSrcBtn) {
+    clearSrcBtn.addEventListener('click', () => {
+      state.activeSource = null;
+      clearSrcBtn.style.display = 'none';
+      renderAll();
+    });
+  }
 }
+
+// ── Boot ───────────────────────────────────────────────────────────────────
 
 async function init() {
   bindEvents();
   updateClock();
   setInterval(updateClock, 1000);
+
+  // Try to render from sessionStorage cache for fast initial paint
+  const cached = loadCache();
+  if (cached) {
+    if (cached.news) { state.news = cached.news; state.updatedAt = cached.newsUpdatedAt; }
+    if (cached.market) state.market = cached.market;
+    if (cached.map) state.pakistanMap = cached.map;
+    renderAll();
+  }
+
+  // Always do a fresh network fetch (cache is just for fast initial paint)
   await refreshData();
   setInterval(refreshData, REFRESH_MS);
 }

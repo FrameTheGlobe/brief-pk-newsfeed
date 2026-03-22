@@ -257,59 +257,83 @@ async function fetchText(url, timeoutMs = 9000) {
   }
 }
 
+// ── Server-side in-memory cache ──────────────────────────────────────────────
+let _newsCache = null;
+let _newsCacheTs = 0;
+const NEWS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function buildArticles() {
+  const responses = await Promise.allSettled(
+    FEEDS.map(async (feed) => {
+      const xml = await fetchText(feed.url);
+      return parseFeed(xml, feed);
+    })
+  );
+
+  const merged = [];
+  for (const r of responses) {
+    if (r.status === 'fulfilled') merged.push(...r.value);
+  }
+
+  const dedup = new Map();
+  for (const article of merged) {
+    const key = article.url || article.title;
+    const existing = dedup.get(key);
+    if (!existing) { dedup.set(key, article); continue; }
+    const scoreDiff = (article.relevanceScore || 0) - (existing.relevanceScore || 0);
+    if (scoreDiff > 0) { dedup.set(key, article); continue; }
+    if (scoreDiff === 0) {
+      if (new Date(article.publishedAt).getTime() > new Date(existing.publishedAt).getTime()) {
+        dedup.set(key, article);
+      }
+    }
+  }
+
+  return [...dedup.values()].sort((a, b) => {
+    const byRelevance = (b.relevanceScore || 0) - (a.relevanceScore || 0);
+    if (byRelevance !== 0) return byRelevance;
+    const byPriority = (p) => (p === 'high' ? 3 : p === 'medium' ? 2 : 1);
+    const byPriorityDelta = byPriority(b.priority) - byPriority(a.priority);
+    if (byPriorityDelta !== 0) return byPriorityDelta;
+    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+  });
+}
+
 module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+
+  const force = req.query?.force === '1';
+
   try {
-    const responses = await Promise.allSettled(
-      FEEDS.map(async (feed) => {
-        const xml = await fetchText(feed.url);
-        return parseFeed(xml, feed);
-      })
-    );
-
-    const merged = [];
-    for (const r of responses) {
-      if (r.status === 'fulfilled') merged.push(...r.value);
+    if (!force && _newsCache && Date.now() - _newsCacheTs < NEWS_CACHE_TTL) {
+      return res.status(200).json({
+        updatedAt: new Date(_newsCacheTs).toISOString(),
+        total: _newsCache.length,
+        articles: _newsCache.slice(0, 250),
+        cached: true
+      });
     }
 
-    const dedup = new Map();
-    for (const article of merged) {
-      const key = article.url || article.title;
-      const existing = dedup.get(key);
-      if (!existing) {
-        dedup.set(key, article);
-        continue;
-      }
+    const articles = await buildArticles();
+    _newsCache = articles;
+    _newsCacheTs = Date.now();
 
-      const scoreDiff = (article.relevanceScore || 0) - (existing.relevanceScore || 0);
-      if (scoreDiff > 0) {
-        dedup.set(key, article);
-        continue;
-      }
-
-      if (scoreDiff === 0) {
-        const articleTs = new Date(article.publishedAt).getTime();
-        const existingTs = new Date(existing.publishedAt).getTime();
-        if (articleTs > existingTs) dedup.set(key, article);
-      }
-    }
-
-    const articles = [...dedup.values()].sort((a, b) => {
-      const byRelevance = (b.relevanceScore || 0) - (a.relevanceScore || 0);
-      if (byRelevance !== 0) return byRelevance;
-
-      const byPriority = (p) => (p === 'high' ? 3 : p === 'medium' ? 2 : 1);
-      const byPriorityDelta = byPriority(b.priority) - byPriority(a.priority);
-      if (byPriorityDelta !== 0) return byPriorityDelta;
-
-      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-    });
-
-    res.status(200).json({
+    return res.status(200).json({
       updatedAt: new Date().toISOString(),
       total: articles.length,
       articles: articles.slice(0, 250)
     });
   } catch (err) {
+    // Return stale cache if available rather than hard-failing
+    if (_newsCache) {
+      return res.status(200).json({
+        updatedAt: new Date(_newsCacheTs).toISOString(),
+        total: _newsCache.length,
+        articles: _newsCache.slice(0, 250),
+        stale: true
+      });
+    }
     res.status(500).json({
       updatedAt: new Date().toISOString(),
       total: 0,
@@ -318,3 +342,4 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+

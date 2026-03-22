@@ -1,3 +1,8 @@
+// ── Server-side in-memory cache ──────────────────────────────────────────────
+let _mapCache = null;
+let _mapCacheTs = 0;
+const MAP_CACHE_TTL = 10 * 60 * 1000; // 10 minutes (weather/AQI data)
+
 const OPEN_METEO = {
   weather: 'https://api.open-meteo.com/v1/forecast',
   air: 'https://air-quality-api.open-meteo.com/v1/air-quality'
@@ -212,6 +217,14 @@ function toLevel(score) {
 }
 
 module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=120');
+
+  const force = req.query?.force === '1';
+  if (!force && _mapCache && Date.now() - _mapCacheTs < MAP_CACHE_TTL) {
+    return res.status(200).json({ ..._mapCache, cached: true });
+  }
+
   try {
     const [cityReads, flightsRes] = await Promise.all([
       Promise.all(
@@ -308,7 +321,7 @@ module.exports = async function handler(req, res) {
       ? Math.round(pointsWithFlights.reduce((acc, c) => acc + (c.agri.score || 0), 0) / pointsWithFlights.length)
       : 0;
 
-    res.status(200).json({
+    const mapPayload = {
       updatedAt: new Date().toISOString(),
       meta: {
         observedAtLatest,
@@ -335,8 +348,13 @@ module.exports = async function handler(req, res) {
         flightsCorridors: corridorCounts
       },
       points: pointsWithFlights
-    });
+    };
+
+    _mapCache = mapPayload;
+    _mapCacheTs = Date.now();
+    res.status(200).json(mapPayload);
   } catch (err) {
+    if (_mapCache) return res.status(200).json({ ..._mapCache, stale: true });
     res.status(500).json({
       updatedAt: new Date().toISOString(),
       error: err instanceof Error ? err.message : 'pakistan_map_fetch_failed',

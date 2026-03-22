@@ -1,3 +1,8 @@
+// ── Server-side in-memory cache ──────────────────────────────────────────────
+let _marketCache = null;
+let _marketCacheTs = 0;
+const MARKET_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const MARKET_ENDPOINTS = {
   usdPkr: 'https://open.er-api.com/v6/latest/USD',
   stooqBase: 'https://stooq.com/q/l/',
@@ -335,6 +340,14 @@ function parseAnnouncements(html) {
 }
 
 module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+
+  const force = req.query?.force === '1';
+  if (!force && _marketCache && Date.now() - _marketCacheTs < MARKET_CACHE_TTL) {
+    return res.status(200).json({ ..._marketCache, cached: true });
+  }
+
   try {
     const [
       fxRes,
@@ -470,7 +483,7 @@ module.exports = async function handler(req, res) {
       if (anncData) signals = anncData;
     }
 
-    res.status(200).json({
+    const payload = {
       updatedAt: new Date().toISOString(),
       fx: { usdPkr },
       equities,
@@ -486,8 +499,9 @@ module.exports = async function handler(req, res) {
         naturalGasUsdPerMmbtu: natGas.value,
         goldUsdPerOz: gold.value,
         gasolineUsdProxy: gasoline.value,
-        lngProxy: 11.25,
-        lpgProxy: 1.12,
+        // LNG/LPG proxy — derived approximations from natGas & brent
+        lngProxy: Number.isFinite(natGas.value) ? +(natGas.value * 3.6 * 0.85).toFixed(3) : 11.25,
+        lpgProxy: Number.isFinite(brent.value) ? +(brent.value * 0.012).toFixed(3) : 1.12,
         sources: {
           brent: brent.source,
           naturalGas: natGas.source,
@@ -495,8 +509,14 @@ module.exports = async function handler(req, res) {
           gasoline: gasoline.source
         }
       }
-    });
+    };
+
+    _marketCache = payload;
+    _marketCacheTs = Date.now();
+    res.status(200).json(payload);
   } catch (err) {
+    // Return stale cache on error
+    if (_marketCache) return res.status(200).json({ ..._marketCache, stale: true });
     res.status(500).json({
       updatedAt: new Date().toISOString(),
       error: err instanceof Error ? err.message : 'market_fetch_failed'
