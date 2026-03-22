@@ -903,6 +903,20 @@ function renderPakistanNerveCenter() {
   `;
 }
 
+function renderFooter(news) {
+  const footerSourceEl = document.getElementById('footerSourceList');
+  if (!footerSourceEl) return;
+
+  if (!Array.isArray(news)) {
+    footerSourceEl.textContent = 'No source data';
+    return;
+  }
+
+  const sources = [...new Set(news.map((item) => item.source).filter(Boolean))];
+  const formatted = sources.length ? sources.join(' · ') : 'No sources detected';
+  footerSourceEl.textContent = formatted;
+}
+
 // ── renderAll ──────────────────────────────────────────────────────────────
 
 function renderAll() {
@@ -977,6 +991,7 @@ async function refreshData() {
   });
 
   renderAll();
+  renderFooter(state.news);
 }
 
 // ── Event binding ──────────────────────────────────────────────────────────
@@ -1136,6 +1151,7 @@ async function init() {
     if (cached.market) state.market = cached.market;
     if (cached.map) state.pakistanMap = cached.map;
     renderAll();
+    renderFooter(state.news);
   }
 
   // Always do a fresh network fetch (cache is just for fast initial paint)
