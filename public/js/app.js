@@ -49,6 +49,19 @@ function relTime(iso) {
   return `${days}d ago`;
 }
 
+function relTimeClass(iso) {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return 'time-stale';
+  const mins = Math.floor((Date.now() - t) / 60000);
+  if (mins < 60)  return 'time-fresh';
+  if (mins < 360) return 'time-recent';
+  return 'time-stale';
+}
+
+function relTimeBadge(iso) {
+  return `<span class="${relTimeClass(iso)}">${relTime(iso)}</span>`;
+}
+
 function fmtNum(value, digits = 2) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
   return Number(value).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -236,7 +249,7 @@ function renderTodaysBriefing(items) {
         <span class="briefing-headline${isRtl ? ' rtl-text' : ''}">${escapeHtml(item.title)}</span>
         <span class="briefing-foot">
           <span class="briefing-source">${escapeHtml(item.source)}</span>
-          <span class="briefing-time">${relTime(item.publishedAt)}</span>
+          <span class="briefing-time">${relTimeBadge(item.publishedAt)}</span>
         </span>
       </a>
     `;
@@ -291,7 +304,7 @@ function renderSearchResults() {
           <span class="badge">${escapeHtml(n.source)}</span>
         </div>
       </div>
-      <div class="time-col">${relTime(n.publishedAt)}</div>
+      <div class="time-col">${relTimeBadge(n.publishedAt)}</div>
     </a>
   `).join('');
 }
@@ -445,11 +458,14 @@ function renderHeaderSignals(items) {
 
   setText('hdrUsdPkr', Number.isFinite(usdPkr) ? fmtNum(usdPkr, 3) : '--');
   setText('hdrKse100', Number.isFinite(kse?.value) ? `${fmtNum(kse.value, 0)} (${chgLabel(kse.changePct)})` : '--');
-  setText('hdrBrent', Number.isFinite(brent) ? `$${fmtNum(brent, 2)}${commoditiesStale ? ' (stale)' : ''}` : '--');
+  const staleChip = commoditiesStale ? `<span class="stale-chip">${Number.isFinite(commoditiesAgeMinutes) ? `${commoditiesAgeMinutes}m` : 'stale'}</span>` : '';
+  const brentEl = document.getElementById('hdrBrent');
+  if (brentEl) brentEl.innerHTML = Number.isFinite(brent) ? `$${fmtNum(brent, 2)}${staleChip}` : '--';
   setText('hdrGasoline', Number.isFinite(gasoline) ? `$${fmtNum(gasoline, 3)}` : '--');
   setText('hdrLngLpg', Number.isFinite(lng) && Number.isFinite(lpg) ? `$${fmtNum(lng, 2)} / $${fmtNum(lpg, 2)}` : '--');
   const fuelPressureLabel = Number.isFinite(fuelPressure) ? `${fuelPressure}/100` : '--/100';
-  setText('hdrFuelPressure', commoditiesStale && Number.isFinite(commoditiesAgeMinutes) ? `${fuelPressureLabel} (${commoditiesAgeMinutes}m)` : fuelPressureLabel);
+  const fpEl = document.getElementById('hdrFuelPressure');
+  if (fpEl) fpEl.innerHTML = fuelPressureLabel + (commoditiesStale ? staleChip : '');
 
   setText('hdrEnergy24h', `${energy24h}`);
   setText('hdrImf24h', `${imf24h}`);
@@ -480,7 +496,7 @@ function renderBreaking(items) {
               <span class="badge">${escapeHtml(n.source)}</span>
             </div>
           </div>
-          <div class="time-col">${relTime(n.publishedAt)}</div>
+          <div class="time-col">${relTimeBadge(n.publishedAt)}</div>
         </a>
       `;
     })
@@ -526,7 +542,7 @@ function renderCategories(items) {
                   <div class="card-headline">${escapeHtml(n.title)}</div>
                   <div class="card-foot">
                     <span class="card-source">${escapeHtml(n.source)}</span>
-                    <span class="card-time">${relTime(n.publishedAt)}</span>
+                    <span class="card-time">${relTimeBadge(n.publishedAt)}</span>
                   </div>
                 </a>
               `
@@ -544,13 +560,20 @@ function renderTrendRadar(items) {
   if (!el) return;
 
   const trend = aggregateCounts(items, (n) => n.category).slice(0, 8);
+  const max = trend[0]?.[1] || 1;
   el.innerHTML = `<ul class="trend-list">${trend
-    .map(([name, count]) => `
-      <li class="trend-item">
-        <span class="trend-name">${escapeHtml(name)}</span>
-        <span class="trend-meta">${count} stories</span>
-      </li>
-    `)
+    .map(([name, count]) => {
+      const pct = Math.round((count / max) * 100);
+      return `
+        <li class="trend-item">
+          <div class="trend-bar-wrap">
+            <span class="trend-bar-bg" style="width:${pct}%"></span>
+            <span class="trend-name trend-label">${escapeHtml(name)}</span>
+            <span class="trend-meta trend-count">${count}</span>
+          </div>
+        </li>
+      `;
+    })
     .join('')}</ul>`;
 }
 
@@ -587,7 +610,7 @@ function renderLiveFeed(items) {
       (n) => `
       <a href="${escapeHtml(n.url)}" class="live-item" target="_blank" rel="noopener noreferrer">
         <div class="live-title">${escapeHtml(n.title)}</div>
-        <div class="live-meta">${escapeHtml(n.source)} · ${escapeHtml(n.scope)} · ${relTime(n.publishedAt)}</div>
+        <div class="live-meta">${escapeHtml(n.source)} · ${escapeHtml(n.scope)} · ${relTimeBadge(n.publishedAt)}</div>
       </a>
     `
     )

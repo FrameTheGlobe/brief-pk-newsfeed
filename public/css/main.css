@@ -286,7 +286,8 @@ body {
 .flash-ticker-wrap {
   display: flex;
   align-items: center;
-  background: #0d3d5e;
+  background: linear-gradient(90deg, #0d3d5e 0%, #0e4d6e 100%);
+  border-top: 2px solid rgba(157, 234, 255, 0.35);
   border-radius: 6px;
   overflow: hidden;
   height: 36px;
@@ -2255,4 +2256,61 @@ body {
   .dark-toggle { padding: 3px 6px; font-size: 12px; }
   .footer-inner { flex-direction: column; align-items: flex-start; gap: 8px; }
   .scroll-top-btn { bottom: 16px; right: 14px; width: 34px; height: 34px; font-size: 14px; }
+}
+
+/* ─── Time-age badge colours ──────────────────── */
+.time-fresh  { color: #16a34a; font-weight: 600; }
+.time-recent { color: #d97706; font-weight: 600; }
+.time-stale  { color: var(--text-muted); }
+
+[data-theme="dark"] .time-fresh  { color: #4ade80; }
+[data-theme="dark"] .time-recent { color: #fbbf24; }
+[data-theme="dark"] .time-stale  { color: var(--text-muted); }
+
+/* ─── Stale chip (header signals) ────────────── */
+.stale-chip {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.12);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+[data-theme="dark"] .stale-chip {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+/* ─── Trend Radar bar ─────────────────────────── */
+.trend-bar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.trend-bar-bg {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  border-radius: 3px;
+  background: rgba(157, 234, 255, 0.18);
+  pointer-events: none;
+  transition: width 0.4s ease;
+  z-index: 0;
+}
+
+[data-theme="dark"] .trend-bar-bg {
+  background: rgba(157, 234, 255, 0.08);
+}
+
+.trend-label,
+.trend-count {
+  position: relative;
+  z-index: 1;
 }
