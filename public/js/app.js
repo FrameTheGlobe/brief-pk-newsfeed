@@ -457,7 +457,12 @@ function renderHeaderSignals(items) {
   setText('sourceCount', `${uniqueSources} sources`);
 
   setText('hdrUsdPkr', Number.isFinite(usdPkr) ? fmtNum(usdPkr, 3) : '--');
-  setText('hdrKse100', Number.isFinite(kse?.value) ? `${fmtNum(kse.value, 0)} (${chgLabel(kse.changePct)})` : '--');
+  const kseEl = document.getElementById('hdrKse100');
+  if (kseEl) {
+    kseEl.innerHTML = Number.isFinite(kse?.value)
+      ? `${fmtNum(kse.value, 0)} <span class="${chgClass(kse.changePct)}">(${chgLabel(kse.changePct)})</span>`
+      : '--';
+  }
   const staleChip = commoditiesStale ? `<span class="stale-chip">${Number.isFinite(commoditiesAgeMinutes) ? `${commoditiesAgeMinutes}m` : 'stale'}</span>` : '';
   const brentEl = document.getElementById('hdrBrent');
   if (brentEl) brentEl.innerHTML = Number.isFinite(brent) ? `$${fmtNum(brent, 2)}${staleChip}` : '--';
@@ -485,7 +490,7 @@ function renderBreaking(items) {
   el.innerHTML = rows
     .map((n, idx) => {
       return `
-        <a class="breaking-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">
+        <a class="breaking-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer" data-priority="${escapeHtml(n.priority)}">
           <div class="breaking-rank">${String(idx + 1).padStart(2, '0')}</div>
           <div>
             <div class="breaking-title">${escapeHtml(n.title)}</div>
@@ -812,7 +817,7 @@ function renderPakistanNerveCenter() {
   mapEl.innerHTML = `
     <div class="pk-map-stage">
       <svg class="pk-map-outline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M20,12 L38,7 L57,11 L71,22 L80,36 L84,51 L76,67 L64,86 L43,92 L24,80 L16,62 L14,42 L19,27 Z"></path>
+        <path d="M57,5 L67,8 L76,12 L80,18 L78,24 L76,30 L78,37 L76,43 L73,50 L68,57 L62,63 L58,70 L55,76 L53,82 L50,86 L46,90 L40,92 L36,90 L30,87 L22,84 L16,81 L12,79 L10,73 L8,62 L8,52 L10,44 L13,38 L17,30 L22,23 L28,17 L35,13 L43,10 L50,7 L57,5 Z"></path>
       </svg>
       ${points
         .map((point) => {
