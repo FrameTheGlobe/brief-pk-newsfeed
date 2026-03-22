@@ -7,9 +7,10 @@ const MARKET_ENDPOINTS = {
   usdPkr: 'https://open.er-api.com/v6/latest/USD',
   stooqBase: 'https://stooq.com/q/l/',
   fredBrent: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU',
-  yahooChartBase: 'https://query1.finance.yahoo.com/v8/finance/chart',
-  yahooSpark: 'https://query1.finance.yahoo.com/v7/finance/spark',
-  yahooKse: 'https://query1.finance.yahoo.com/v8/finance/chart/%5EKSE?interval=1d&range=5d',
+  // query2 bypasses the Vercel IP block that query1 enforces
+  yahooChartBase: 'https://query2.finance.yahoo.com/v8/finance/chart',
+  yahooSpark: 'https://query2.finance.yahoo.com/v7/finance/spark',
+  yahooKse: 'https://query2.finance.yahoo.com/v8/finance/chart/%5EKSE?interval=1d&range=5d',
   psxIndices: 'https://dps.psx.com.pk/api/indices',
   psxPerformers: 'https://dps.psx.com.pk/performers',
   psxAnnouncements: 'https://dps.psx.com.pk/announcements'
@@ -23,7 +24,7 @@ const YAHOO_COMMODITY_SYMBOLS = {
 };
 
 const STOOQ_SYMBOLS = {
-  brent: 'cl.f',
+  brent: 'cb.f',       // ICE Brent Crude (was cl.f = WTI — wrong benchmark)
   gasHenryHub: 'ng.f',
   gold: 'xauusd',
   gasoline: 'rb.f'
@@ -31,13 +32,13 @@ const STOOQ_SYMBOLS = {
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-async function fetchJson(url, timeoutMs = 7000) {
+async function fetchJson(url, timeoutMs = 7000, extraHeaders = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'user-agent': UA, 'accept': 'application/json', 'x-requested-with': 'XMLHttpRequest' }
+      headers: { 'user-agent': UA, 'accept': 'application/json', 'x-requested-with': 'XMLHttpRequest', ...extraHeaders }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
@@ -155,18 +156,23 @@ function stooqQuoteUrl(symbol) {
 }
 
 function parseStooqQuote(csvText) {
-  const line = String(csvText || '').trim().split(/\r?\n/)[0] || '';
-  const [symbol, date, time, open, high, low, close] = line.split(',');
-  const value = Number(close);
-
-  if (!symbol || !date || !Number.isFinite(value)) return null;
-
-  const candidate = time ? `${date}T${time}Z` : `${date}T00:00:00Z`;
-  const parsed = new Date(candidate);
-  return {
-    value,
-    asOf: Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
-  };
+  const lines = String(csvText || '').trim().split(/\r?\n/);
+  // Scan backward for the most recent valid data row; skip header if present
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const parts = lines[i].split(',');
+    if (parts.length < 7) continue;
+    const [symbol, date, time, , , , close] = parts;
+    if (!symbol || symbol.toLowerCase() === 'symbol') continue; // skip header
+    const value = Number(close);
+    if (!date || !Number.isFinite(value) || value <= 0) continue;
+    const candidate = time ? `${date}T${time}Z` : `${date}T00:00:00Z`;
+    const parsed = new Date(candidate);
+    return {
+      value,
+      asOf: Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+    };
+  }
+  return null;
 }
 
 function yahooChartUrl(symbol, interval = '5m', range = '1d') {
@@ -349,6 +355,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    const PSX_HEADERS = {
+      'referer': 'https://dps.psx.com.pk/',
+      'origin': 'https://dps.psx.com.pk',
+      'accept': 'application/json, text/html, */*'
+    };
+
     const [
       fxRes,
       stooqBrentRes,
@@ -358,8 +370,12 @@ module.exports = async function handler(req, res) {
       fredBrentRes,
       psxIndRes,
       psxPerfRes,
-      yahooRes,
+      yahooKseRes,
       psxAnncRes,
+      yahooBrentRes,
+      yahooGasRes,
+      yahooGoldRes,
+      yahooGasolineRes,
       yahooCommoditySparkRes
     ] = await Promise.allSettled([
       fetchJson(MARKET_ENDPOINTS.usdPkr),
@@ -368,22 +384,29 @@ module.exports = async function handler(req, res) {
       fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gold)),
       fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gasoline)),
       fetchText(MARKET_ENDPOINTS.fredBrent),
-      fetchJson(MARKET_ENDPOINTS.psxIndices),
+      fetchJson(MARKET_ENDPOINTS.psxIndices, 7000, PSX_HEADERS),
       fetchText(MARKET_ENDPOINTS.psxPerformers),
       fetchYahooJson(MARKET_ENDPOINTS.yahooKse),
       fetchPostForm(MARKET_ENDPOINTS.psxAnnouncements, { type: 'C', symbol: '', count: 20, offset: 0, page: 'annc' }),
+      // Individual per-commodity chart fetches (query2) — more reliable than spark
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/BZ=F?interval=1d&range=5d`),
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/NG=F?interval=1d&range=5d`),
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/GC=F?interval=1d&range=5d`),
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/RB=F?interval=1d&range=5d`),
       fetchYahooJson(yahooSparkUrl(Object.values(YAHOO_COMMODITY_SYMBOLS)))
     ]);
 
     const fx = fxRes.status === 'fulfilled' ? fxRes.value : null;
     const usdPkr = fx?.rates?.PKR ?? 278.99;
-    
-    let equities = { kse100: { value: 71234, change: 123, changePct: 0.17 }, kse30: null, allshr: null };
+
+    // Equities: PSX API first (with referer headers), Yahoo KSE fallback, then null (no fake hardcoded value)
+    let equities = { kse100: null, kse30: null, allshr: null };
     if (psxIndRes.status === 'fulfilled' && psxIndRes.value) {
       const psxData = parseIndices(psxIndRes.value);
       if (psxData) equities = psxData;
-    } else if (yahooRes.status === 'fulfilled') {
-      const yData = parseYahooKse(yahooRes.value);
+    }
+    if (!equities.kse100 && yahooKseRes.status === 'fulfilled') {
+      const yData = parseYahooKse(yahooKseRes.value);
       if (yData) equities.kse100 = yData;
     }
 
@@ -405,52 +428,46 @@ module.exports = async function handler(req, res) {
       gasoline: stooqGasoline.value,
       gasolineAsOf: stooqGasoline.asOf
     };
-    const fredBrent = fredBrentRes.status === 'fulfilled' && fredBrentRes.value
+
+    // FRED only used if both Yahoo and Stooq fail for Brent, and only if data is recent
+    const fredBrentRaw = fredBrentRes.status === 'fulfilled' && fredBrentRes.value
       ? parseFredLatest(fredBrentRes.value)
       : null;
+    // Discard FRED data older than 7 days to avoid serving stale fallback as "current"
+    const fredBrent = fredBrentRaw && fredBrentRaw.asOf
+      && (Date.now() - new Date(fredBrentRaw.asOf).getTime()) < 7 * 24 * 60 * 60 * 1000
+      ? fredBrentRaw
+      : null;
+
+    // Individual Yahoo chart fetches (query2) — primary live source
+    const readYahooChart = (result) => result.status === 'fulfilled' ? parseYahooCommodity(result.value) : null;
+    const yahooChartBrent    = readYahooChart(yahooBrentRes);
+    const yahooChartGas      = readYahooChart(yahooGasRes);
+    const yahooChartGold     = readYahooChart(yahooGoldRes);
+    const yahooChartGasoline = readYahooChart(yahooGasolineRes);
+
+    // Spark as secondary Yahoo source
     const sparkCommodities = yahooCommoditySparkRes.status === 'fulfilled'
       ? parseYahooSpark(yahooCommoditySparkRes.value)
       : {};
-    const liveCommodities = {
-      brent: sparkCommodities[YAHOO_COMMODITY_SYMBOLS.brent] || null,
-      gasHenryHub: sparkCommodities[YAHOO_COMMODITY_SYMBOLS.gasHenryHub] || null,
-      gold: sparkCommodities[YAHOO_COMMODITY_SYMBOLS.gold] || null,
-      gasoline: sparkCommodities[YAHOO_COMMODITY_SYMBOLS.gasoline] || null
+    const sparkBrent    = sparkCommodities[YAHOO_COMMODITY_SYMBOLS.brent] || null;
+    const sparkGas      = sparkCommodities[YAHOO_COMMODITY_SYMBOLS.gasHenryHub] || null;
+    const sparkGold     = sparkCommodities[YAHOO_COMMODITY_SYMBOLS.gold] || null;
+    const sparkGasoline = sparkCommodities[YAHOO_COMMODITY_SYMBOLS.gasoline] || null;
+
+    // Priority: Yahoo chart (query2) → Yahoo spark → Stooq daily → FRED (Brent only, recent only)
+    const resolveCommodity = (yahooChart, yahooSpark, stooqVal, stooqAsOf, fredFallback = null) => {
+      if (yahooChart) return { value: yahooChart.value, asOf: yahooChart.asOf, source: 'yahoo_chart' };
+      if (yahooSpark)  return { value: yahooSpark.value,  asOf: yahooSpark.asOf,  source: 'yahoo_spark'  };
+      if (Number.isFinite(stooqVal)) return { value: stooqVal, asOf: stooqAsOf, source: 'stooq_daily' };
+      if (fredFallback && Number.isFinite(fredFallback.value)) return { value: fredFallback.value, asOf: fredFallback.asOf, source: 'fred_daily' };
+      return { value: null, asOf: null, source: 'unavailable' };
     };
 
-    const pickCommodity = (key, fallbackValue, fallbackAsOf, fallbackSource = 'stooq_daily') => {
-      if (liveCommodities[key]) {
-        return {
-          value: liveCommodities[key].value,
-          asOf: liveCommodities[key].asOf ?? null,
-          source: 'yahoo_intraday'
-        };
-      }
-
-      if (Number.isFinite(fallbackValue)) {
-        return {
-          value: fallbackValue,
-          asOf: fallbackAsOf ?? null,
-          source: fallbackSource
-        };
-      }
-
-      return {
-        value: null,
-        asOf: null,
-        source: 'unavailable'
-      };
-    };
-
-    const brentFallbackValue = Number.isFinite(stooq.brent) ? stooq.brent : fredBrent?.value;
-    const brentFallbackAsOf = stooq.brentAsOf || fredBrent?.asOf || null;
-    const brentFallbackSource = Number.isFinite(stooq.brent)
-      ? 'stooq_daily'
-      : (Number.isFinite(fredBrent?.value) ? 'fred_daily' : 'unavailable');
-    const brent = pickCommodity('brent', brentFallbackValue, brentFallbackAsOf, brentFallbackSource);
-    const natGas = pickCommodity('gasHenryHub', stooq.gasHenryHub, stooq.gasHenryHubAsOf);
-    const gold = pickCommodity('gold', stooq.gold, stooq.goldAsOf);
-    const gasoline = pickCommodity('gasoline', stooq.gasoline, stooq.gasolineAsOf);
+    const brent   = resolveCommodity(yahooChartBrent,    sparkBrent,    stooq.brent,       stooq.brentAsOf,       fredBrent);
+    const natGas  = resolveCommodity(yahooChartGas,      sparkGas,      stooq.gasHenryHub, stooq.gasHenryHubAsOf);
+    const gold    = resolveCommodity(yahooChartGold,     sparkGold,     stooq.gold,        stooq.goldAsOf);
+    const gasoline = resolveCommodity(yahooChartGasoline, sparkGasoline, stooq.gasoline,    stooq.gasolineAsOf);
 
     const commodityAsOfCandidates = [brent.asOf, natGas.asOf, gold.asOf, gasoline.asOf]
       .filter(Boolean)
