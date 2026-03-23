@@ -11,6 +11,7 @@
     "predeploy": "npm run stamp"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "express": "^4.21.2"
   },
   "devDependencies": {
