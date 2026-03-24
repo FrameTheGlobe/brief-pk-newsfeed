@@ -1,3 +1,6 @@
+// Load .env for local development (safe no-op if dotenv isn't installed)
+try { require('dotenv').config(); } catch (_) {}
+
 const path = require('path');
 const express = require('express');
 
