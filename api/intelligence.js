@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 'no-store');
 
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.Groq;
   if (!apiKey) {
     return res.status(503).json({ error: 'GROQ_API_KEY not configured on server' });
   }

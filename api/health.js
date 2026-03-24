@@ -1,7 +1,7 @@
 // Lightweight health / env-check endpoint
 // Safe to expose: shows key presence and prefix only, never the full value
 module.exports = function handler(req, res) {
-  const key = process.env.GROQ_API_KEY || '';
+  const key = process.env.GROQ_API_KEY || process.env.Groq || '';
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
     ok:           true,
