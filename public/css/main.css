@@ -2432,6 +2432,69 @@ body {
   box-shadow: 0 2px 12px rgba(26, 111, 168, 0.07);
 }
 
+/* ─── Inline variant — inside main lane ─────────── */
+.ai-intel-inline {
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  border-top: 3px solid var(--brand-red);
+  padding: 14px 16px 12px;
+  box-shadow: 0 1px 6px rgba(26, 111, 168, 0.07);
+}
+
+.ai-inline-body {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.ai-inline-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ai-inline-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+/* Override padding for daily brief inside inline variant */
+.ai-intel-inline .ai-daily-brief {
+  padding: 0;
+}
+
+/* Override padding for watch/synthesis inside inline variant */
+.ai-intel-inline .ai-watch-wrap {
+  padding: 0;
+}
+
+.ai-intel-inline .ai-synthesis-wrap {
+  padding: 8px 10px;
+  margin: 0;
+}
+
+/* Compact indicators in inline mode */
+.ai-intel-inline .ai-indicators-row {
+  gap: 6px;
+}
+
+.ai-intel-inline .ai-ind-card {
+  min-height: unset;
+}
+
+@media (max-width: 900px) {
+  .ai-inline-body {
+    grid-template-columns: 1fr;
+  }
+  .ai-inline-bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Header row ─────────────────── */
 .ai-intel-header {
   display: flex;
@@ -2632,6 +2695,127 @@ body {
   border-radius: 6px;
 }
 
+/* ─── Daily Brief ─────────────────────────────────────── */
+.ai-daily-brief {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-brief-label {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--brand-navy);
+  margin-bottom: 2px;
+}
+
+[data-theme="dark"] .ai-brief-label { color: #7dd3fc; }
+
+.ai-brief-bullet {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: rgba(26, 39, 68, 0.04);
+  border: 1px solid var(--panel-border);
+  border-left: 3px solid var(--brand-navy);
+  border-radius: 6px;
+  padding: 9px 11px;
+}
+
+[data-theme="dark"] .ai-brief-bullet {
+  background: rgba(255,255,255,0.04);
+  border-left-color: #38bdf8;
+}
+
+.ai-brief-num {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--brand-navy);
+  min-width: 16px;
+  margin-top: 1px;
+}
+
+[data-theme="dark"] .ai-brief-num { color: #38bdf8; }
+
+.ai-brief-content { display: flex; flex-direction: column; gap: 3px; }
+
+.ai-brief-headline {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.ai-brief-detail {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ─── Sparklines ──────────────────────────────────────── */
+.ai-sparkline {
+  width: 56px;
+  height: 22px;
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0.85;
+}
+
+/* ─── What to Watch ───────────────────────────────────── */
+.ai-watch-wrap {
+  padding: 0 16px 12px;
+}
+
+.ai-watch-label {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--brand-navy);
+  margin-bottom: 6px;
+}
+
+[data-theme="dark"] .ai-watch-label { color: #7dd3fc; }
+
+.ai-watch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-watch-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.45;
+  background: rgba(217, 119, 6, 0.06);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+
+[data-theme="dark"] .ai-watch-item {
+  background: rgba(251, 191, 36, 0.07);
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+.ai-watch-num {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #d97706;
+}
+
+/* ─── Synthesis ───────────────────────────────────────── */
 .ai-synthesis-text {
   font-size: 12px;
   line-height: 1.65;

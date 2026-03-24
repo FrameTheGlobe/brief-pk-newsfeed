@@ -1121,8 +1121,43 @@ function bindEvents() {
 
 // ── AI Intelligence Strip ──────────────────────────────────────────────────
 
-const INTEL_CLIENT_TTL = 30 * 60 * 1000; // 30 min — mirrors server cache
+const INTEL_CLIENT_TTL = 30 * 60 * 1000;
+const SPARKLINE_KEY = 'brief-pk-sparklines-v1';
+const SPARKLINE_MAX = 5;
 let _intelLastFetch = 0;
+
+function saveSparklineSnapshot(indicators) {
+  try {
+    const raw = localStorage.getItem(SPARKLINE_KEY);
+    const history = raw ? JSON.parse(raw) : [];
+    const snap = { ts: Date.now(), scores: {} };
+    for (const ind of indicators) snap.scores[ind.id] = ind.score;
+    history.push(snap);
+    if (history.length > SPARKLINE_MAX) history.splice(0, history.length - SPARKLINE_MAX);
+    localStorage.setItem(SPARKLINE_KEY, JSON.stringify(history));
+  } catch { /* quota / private */ }
+}
+
+function loadSparklineHistory() {
+  try {
+    const raw = localStorage.getItem(SPARKLINE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function buildSparklineSVG(history, id) {
+  const W = 56, H = 22, PAD = 2;
+  const vals = history.map(s => Number.isFinite(s.scores[id]) ? s.scores[id] : null).filter(v => v !== null);
+  if (vals.length < 2) return '';
+  const xs = vals.map((_, i) => PAD + ((W - PAD * 2) / (vals.length - 1)) * i);
+  const ys = vals.map(v => H - PAD - ((v / 100) * (H - PAD * 2)));
+  const d = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const last = vals[vals.length - 1];
+  const col = last >= 65 ? '#16a34a' : last >= 40 ? '#d97706' : '#dc2626';
+  const dotX = xs[xs.length - 1].toFixed(1);
+  const dotY = ys[ys.length - 1].toFixed(1);
+  return `<svg class="ai-sparkline" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${d}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${dotX}" cy="${dotY}" r="2" fill="${col}"/></svg>`;
+}
 
 function scoreColor(score) {
   if (score >= 65) return '#16a34a';   // green — favorable
@@ -1137,7 +1172,9 @@ function trendIcon(trend) {
 }
 
 function renderIntelligence(data) {
+  const briefEl = document.getElementById('aiDailyBrief');
   const rowEl   = document.getElementById('aiIndicatorsRow');
+  const watchEl = document.getElementById('aiWatchFor');
   const synthEl = document.getElementById('aiSynthesisWrap');
   const ageEl   = document.getElementById('aiIntelAge');
   if (!rowEl || !synthEl) return;
@@ -1149,10 +1186,38 @@ function renderIntelligence(data) {
     ageEl.innerHTML = `Generated ${mins < 1 ? 'just now' : `${mins}m ago`} · ${data.headlineCount || 0} headlines · Groq${staleTag}`;
   }
 
-  // Indicator cards
+  // ── Priority 1: Daily Brief ────────────────────────────────────────────
+  if (briefEl) {
+    const bullets = Array.isArray(data.dailyBrief) ? data.dailyBrief : [];
+    if (bullets.length) {
+      briefEl.innerHTML = `
+        <div class="ai-brief-label">Today in Pakistan</div>
+        ${bullets.map((b, i) => `
+          <div class="ai-brief-bullet">
+            <span class="ai-brief-num">${i + 1}</span>
+            <div class="ai-brief-content">
+              <div class="ai-brief-headline">${escapeHtml(b.headline)}</div>
+              <div class="ai-brief-detail">${escapeHtml(b.detail)}</div>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    } else {
+      briefEl.innerHTML = '';
+    }
+  }
+
+  // ── Priority 2: Save sparkline snapshot then render ────────────────────
+  if (Array.isArray(data.indicators) && data.indicators.length) {
+    saveSparklineSnapshot(data.indicators);
+  }
+  const sparkHistory = loadSparklineHistory();
+
+  // ── Indicator cards with sparklines ───────────────────────────────────
   rowEl.innerHTML = (data.indicators || []).map(ind => {
     const col   = scoreColor(ind.score);
     const score = Number.isFinite(ind.score) ? ind.score : 50;
+    const spark = buildSparklineSVG(sparkHistory, ind.id);
     return `
       <div class="ai-ind-card" data-id="${escapeHtml(ind.id)}">
         <div class="ai-ind-border" style="background:${col}"></div>
@@ -1161,6 +1226,7 @@ function renderIntelligence(data) {
           <div class="ai-ind-score-row">
             <span class="ai-ind-score" style="color:${col}">${score}</span>
             ${trendIcon(ind.trend)}
+            ${spark}
           </div>
           <div class="ai-gauge-wrap">
             <div class="ai-gauge-fill" style="width:${score}%;background:${col}"></div>
@@ -1171,6 +1237,22 @@ function renderIntelligence(data) {
       </div>
     `;
   }).join('');
+
+  // ── Priority 3: What to Watch ──────────────────────────────────────────
+  if (watchEl) {
+    const watches = Array.isArray(data.watchFor) ? data.watchFor.filter(Boolean) : [];
+    watchEl.innerHTML = watches.length ? `
+      <div class="ai-watch-label">What to Watch</div>
+      <div class="ai-watch-list">
+        ${watches.map((w, i) => `
+          <div class="ai-watch-item">
+            <span class="ai-watch-num">${['①','②'][i] || (i+1)}</span>
+            <span>${escapeHtml(w)}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+  }
 
   // Synthesis
   synthEl.innerHTML = data.synthesis

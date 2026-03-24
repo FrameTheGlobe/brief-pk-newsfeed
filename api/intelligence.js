@@ -62,7 +62,7 @@ function buildPrompt(headlines) {
 
   return `You are a senior Pakistan intelligence analyst. Today is ${today}.
 
-${headlineBlock}Analyze Pakistan's current situation across exactly 6 dimensions and return a JSON object. Use the headlines as primary context; supplement with your knowledge of Pakistan's ongoing situation.
+${headlineBlock}Analyze Pakistan's current situation and return a single JSON object. Use the headlines as primary context; supplement with your knowledge of Pakistan's ongoing situation.
 
 SCORING GUIDE (apply consistently):
 • 75–100 = Strong / Favorable condition
@@ -74,6 +74,15 @@ SCORING GUIDE (apply consistently):
 Return ONLY a valid JSON object, no markdown fences, no explanation:
 
 {
+  "dailyBrief": [
+    {"headline":"<6-8 word story label>","detail":"<2 sentences, plain English, max 160 chars>"},
+    {"headline":"<6-8 word story label>","detail":"<2 sentences, plain English, max 160 chars>"},
+    {"headline":"<6-8 word story label>","detail":"<2 sentences, plain English, max 160 chars>"}
+  ],
+  "watchFor": [
+    "<1 forward-looking signal to monitor in next 24-48h, max 100 chars>",
+    "<1 forward-looking signal to monitor in next 24-48h, max 100 chars>"
+  ],
   "indicators": [
     {"id":"economy","label":"Economic Health","score":<0-100>,"trend":"<improving|declining|stable>","signal":"<3-5 word headline>","brief":"<1 sentence, max 95 chars>"},
     {"id":"security","label":"Security Climate","score":<0-100>,"trend":"<improving|declining|stable>","signal":"<3-5 word headline>","brief":"<1 sentence, max 95 chars>"},
@@ -114,7 +123,7 @@ module.exports = async function handler(req, res) {
         model: GROQ_MODEL,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.25,
-        max_tokens: 1400,
+        max_tokens: 1900,
         response_format: { type: 'json_object' }
       }),
       signal: AbortSignal.timeout(28000)
@@ -150,10 +159,25 @@ module.exports = async function handler(req, res) {
       trend: VALID_TRENDS.has(ind.trend) ? ind.trend : 'stable'
     }));
 
+    // Normalise dailyBrief
+    const dailyBrief = Array.isArray(parsed.dailyBrief)
+      ? parsed.dailyBrief.slice(0, 3).map(b => ({
+          headline: String(b.headline || '').slice(0, 80),
+          detail:   String(b.detail   || '').slice(0, 200)
+        }))
+      : [];
+
+    // Normalise watchFor
+    const watchFor = Array.isArray(parsed.watchFor)
+      ? parsed.watchFor.slice(0, 2).map(w => String(w || '').slice(0, 120))
+      : [];
+
     const payload = {
       generatedAt:    new Date().toISOString(),
       model:          GROQ_MODEL,
       headlineCount:  headlines.length,
+      dailyBrief,
+      watchFor,
       indicators:     parsed.indicators,
       synthesis:      String(parsed.synthesis || '').slice(0, 500)
     };
