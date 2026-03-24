@@ -16,5 +16,8 @@
   },
   "devDependencies": {
     "vercel": "^48.6.0"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
