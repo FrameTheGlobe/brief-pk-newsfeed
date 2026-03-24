@@ -1119,6 +1119,111 @@ function bindEvents() {
   }
 }
 
+// ── AI Intelligence Strip ──────────────────────────────────────────────────
+
+const INTEL_CLIENT_TTL = 30 * 60 * 1000; // 30 min — mirrors server cache
+let _intelLastFetch = 0;
+
+function scoreColor(score) {
+  if (score >= 65) return '#16a34a';   // green — favorable
+  if (score >= 40) return '#d97706';   // amber — moderate
+  return '#dc2626';                    // red   — critical
+}
+
+function trendIcon(trend) {
+  if (trend === 'improving') return '<span class="ai-trend ai-trend-up">↑</span>';
+  if (trend === 'declining') return '<span class="ai-trend ai-trend-down">↓</span>';
+  return '<span class="ai-trend ai-trend-flat">→</span>';
+}
+
+function renderIntelligence(data) {
+  const rowEl   = document.getElementById('aiIndicatorsRow');
+  const synthEl = document.getElementById('aiSynthesisWrap');
+  const ageEl   = document.getElementById('aiIntelAge');
+  if (!rowEl || !synthEl) return;
+
+  // Age label
+  if (ageEl && data.generatedAt) {
+    const mins = Math.round((Date.now() - new Date(data.generatedAt).getTime()) / 60000);
+    const staleTag = data.stale ? ' <span class="stale-chip">stale</span>' : '';
+    ageEl.innerHTML = `Generated ${mins < 1 ? 'just now' : `${mins}m ago`} · ${data.headlineCount || 0} headlines · Groq${staleTag}`;
+  }
+
+  // Indicator cards
+  rowEl.innerHTML = (data.indicators || []).map(ind => {
+    const col   = scoreColor(ind.score);
+    const score = Number.isFinite(ind.score) ? ind.score : 50;
+    return `
+      <div class="ai-ind-card" data-id="${escapeHtml(ind.id)}">
+        <div class="ai-ind-border" style="background:${col}"></div>
+        <div class="ai-ind-body">
+          <div class="ai-ind-label">${escapeHtml(ind.label)}</div>
+          <div class="ai-ind-score-row">
+            <span class="ai-ind-score" style="color:${col}">${score}</span>
+            ${trendIcon(ind.trend)}
+          </div>
+          <div class="ai-gauge-wrap">
+            <div class="ai-gauge-fill" style="width:${score}%;background:${col}"></div>
+          </div>
+          <div class="ai-ind-signal">${escapeHtml(ind.signal || '')}</div>
+          <div class="ai-ind-brief">${escapeHtml(ind.brief || '')}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Synthesis
+  synthEl.innerHTML = data.synthesis
+    ? `<p class="ai-synthesis-text">${escapeHtml(data.synthesis)}</p>`
+    : '';
+}
+
+function renderIntelligenceError(msg) {
+  const rowEl   = document.getElementById('aiIndicatorsRow');
+  const ageEl   = document.getElementById('aiIntelAge');
+  if (rowEl) rowEl.innerHTML = `<div class="ai-intel-err">${escapeHtml(msg)}</div>`;
+  if (ageEl)  ageEl.textContent = 'Unavailable';
+}
+
+async function fetchIntelligence(force = false) {
+  // Client-side rate limit — don't hammer the endpoint
+  if (!force && Date.now() - _intelLastFetch < INTEL_CLIENT_TTL) return;
+  _intelLastFetch = Date.now();
+
+  try {
+    const url = `/api/intelligence${force ? '?force=1' : ''}`;
+    const res  = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    renderIntelligence(data);
+  } catch (err) {
+    renderIntelligenceError(`Analysis unavailable: ${err.message}`);
+  }
+}
+
+function initIntelligence() {
+  fetchIntelligence(); // initial load
+
+  // Refresh button
+  const btn = document.getElementById('aiRefreshBtn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const rowEl = document.getElementById('aiIndicatorsRow');
+      if (rowEl) {
+        rowEl.innerHTML = Array(6).fill('<div class="ai-ind-skel skel"></div>').join('');
+      }
+      _intelLastFetch = 0; // reset client throttle
+      fetchIntelligence(true);
+    });
+  }
+
+  // Re-run every 30 min, aligned with server cache
+  setInterval(() => fetchIntelligence(), INTEL_CLIENT_TTL);
+}
+
 // ── Boot ───────────────────────────────────────────────────────────────────
 
 function initScrollToTop() {
@@ -1141,6 +1246,7 @@ function initScrollToTop() {
 async function init() {
   bindEvents();
   initScrollToTop();
+  initIntelligence();
   updateClock();
   setInterval(updateClock, 1000);
 
