@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/main.css?v=4.2.1" />
+  <link rel="stylesheet" href="/css/main.css?v=4.2.3" />
 </head>
 <body>
   <div class="page-bg"></div>
@@ -73,6 +73,17 @@
       </div>
     </div>
   </header>
+
+  <!-- ═══ FEED LOAD (real progress: each API round-trip bumps the bar) ═══ -->
+  <div id="feedLoadBar" class="feed-load-bar" hidden role="status" aria-live="polite" aria-busy="false">
+    <div class="feed-load-track" role="progressbar" id="feedLoadProgress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Data feeds loading progress">
+      <div class="feed-load-fill" id="feedLoadFill" style="width:0%"></div>
+    </div>
+    <div class="feed-load-meta">
+      <span class="feed-load-pct" id="feedLoadPct">0%</span>
+      <span class="feed-load-steps" id="feedLoadSteps">Preparing…</span>
+    </div>
+  </div>
 
   <!-- ═══ TICKERS ═══════════════════════════════════════════════ -->
   <section class="ticker-stack">
@@ -385,7 +396,7 @@
     </div>
   </footer>
 
-  <script src="/js/app.js?v=4.2.1" defer></script>
+  <script src="/js/app.js?v=4.2.3" defer></script>
   <!-- Vercel Analytics — served automatically by Vercel edge; no-op on localhost -->
   <script defer src="/_vercel/insights/script.js"></script>
 </body>

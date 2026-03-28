@@ -265,6 +265,77 @@ body {
   }
 }
 
+/* ─── Feed load bar (tracks real /api round-trips) ─── */
+.feed-load-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: 0 1px 0 rgba(26, 111, 168, 0.06);
+}
+
+.feed-load-track {
+  height: 4px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.feed-load-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--brand-navy-2) 0%, var(--brand-navy) 55%, var(--accent-green) 100%);
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 0 2px 2px 0;
+}
+
+.feed-load-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 20px 8px;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.feed-load-pct {
+  min-width: 2.75rem;
+  color: var(--brand-navy);
+}
+
+.feed-load-steps {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-dim);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+[data-theme="dark"] .feed-load-bar {
+  background: #0d2035;
+  border-bottom-color: #1e4060;
+}
+
+[data-theme="dark"] .feed-load-track {
+  background: #1e4060;
+}
+
+[data-theme="dark"] .feed-load-pct {
+  color: #7dd3fc;
+}
+
+[data-theme="dark"] .feed-load-steps {
+  color: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-load-fill {
+    transition: none;
+  }
+}
+
 /* ─── Tickers ─────────────────────────────────── */
 .ticker-stack {
   margin: 12px 16px;
@@ -1014,30 +1085,38 @@ body {
 .focus-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin: 0 12px 12px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--panel-border);
-  border-radius: 6px;
-  background: var(--surface-2);
-  font-family: var(--mono-font);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-dim);
+  border-radius: 10px;
+  background: var(--surface);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-main);
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.focus-toggle:hover {
+  border-color: rgba(26, 111, 168, 0.45);
+  box-shadow: 0 1px 4px rgba(26, 111, 168, 0.08);
 }
 
 .focus-toggle input {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  accent-color: var(--brand-red);
+  flex-shrink: 0;
+  accent-color: var(--brand-navy);
+  cursor: pointer;
 }
 
 .focus-toggle span {
-  line-height: 1;
+  line-height: 1.35;
 }
 
 .left-rail .rail-block {
@@ -1203,7 +1282,7 @@ body {
 .narrative-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--brand-red) 0%, var(--brand-navy) 100%);
+  background: linear-gradient(90deg, rgba(26, 111, 168, 0.55) 0%, rgba(26, 111, 168, 0.2) 100%);
   transition: width 0.45s ease;
 }
 
@@ -2833,6 +2912,38 @@ body {
   text-align: center;
 }
 
+.ai-offline-panel {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: var(--surface-2);
+}
+
+.ai-offline-title {
+  margin: 0 0 8px;
+  font-family: var(--ui-font);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.ai-offline-body {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.ai-offline-body code {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+
 /* ─── Dark mode overrides ────────── */
 [data-theme="dark"] .ai-intel-strip {
   background: #0d2035;
@@ -2851,6 +2962,18 @@ body {
 [data-theme="dark"] .ai-trend-up   { color: #4ade80; }
 [data-theme="dark"] .ai-trend-down { color: #f87171; }
 [data-theme="dark"] .ai-trend-flat { color: #fbbf24; }
+
+[data-theme="dark"] .ai-offline-panel {
+  background: #112843;
+  border-color: #1e4060;
+}
+
+[data-theme="dark"] .ai-offline-title { color: #e2eef8; }
+[data-theme="dark"] .ai-offline-body { color: #94a3b8; }
+[data-theme="dark"] .ai-offline-body code {
+  background: #0d2035;
+  color: #9deaff;
+}
 
 /* ─── Responsive — tablet collapse to 3-col ─ */
 @media (max-width: 1024px) {

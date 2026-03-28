@@ -965,8 +965,78 @@ async function fetchPakistanMap() {
   return await res.json();
 }
 
+/** Bump counter when each parallel feed request finishes (success or failure). */
+let _feedLoadGen = 0;
+
+const FEED_LOAD_STEPS = [
+  { id: 'news', label: 'RSS news' },
+  { id: 'market', label: 'Markets' },
+  { id: 'map', label: 'Nerve map' }
+];
+
+function setFeedLoadBarVisible(visible) {
+  const bar = document.getElementById('feedLoadBar');
+  if (!bar) return;
+  bar.hidden = !visible;
+  bar.setAttribute('aria-busy', visible ? 'true' : 'false');
+}
+
+function updateFeedLoadProgress(completed, total, stepStates) {
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const fill = document.getElementById('feedLoadFill');
+  const progress = document.getElementById('feedLoadProgress');
+  const pctEl = document.getElementById('feedLoadPct');
+  const stepsEl = document.getElementById('feedLoadSteps');
+  if (fill) fill.style.width = `${pct}%`;
+  if (progress) progress.setAttribute('aria-valuenow', String(pct));
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (stepsEl) {
+    stepsEl.textContent = FEED_LOAD_STEPS.map(({ id, label }) => {
+      const s = stepStates[id] || 'pending';
+      if (s === 'ok') return `${label} ✓`;
+      if (s === 'err') return `${label} ✗`;
+      return `${label} …`;
+    }).join(' · ');
+  }
+}
+
 async function refreshData() {
-  const [newsRes, marketRes, mapRes] = await Promise.allSettled([fetchNews(), fetchMarket(), fetchPakistanMap()]);
+  const gen = ++_feedLoadGen;
+  setFeedLoadBarVisible(true);
+
+  const stepStates = Object.fromEntries(FEED_LOAD_STEPS.map(({ id }) => [id, 'pending']));
+  let completed = 0;
+  const total = FEED_LOAD_STEPS.length;
+
+  const bump = (id, ok) => {
+    if (gen !== _feedLoadGen) return;
+    stepStates[id] = ok ? 'ok' : 'err';
+    completed += 1;
+    updateFeedLoadProgress(completed, total, stepStates);
+  };
+
+  updateFeedLoadProgress(0, total, stepStates);
+
+  const results = await Promise.all([
+    fetchNews().then(
+      (v) => { bump('news', true); return { key: 'news', status: 'fulfilled', value: v }; },
+      (e) => { bump('news', false); return { key: 'news', status: 'rejected', reason: e }; }
+    ),
+    fetchMarket().then(
+      (v) => { bump('market', true); return { key: 'market', status: 'fulfilled', value: v }; },
+      (e) => { bump('market', false); return { key: 'market', status: 'rejected', reason: e }; }
+    ),
+    fetchPakistanMap().then(
+      (v) => { bump('map', true); return { key: 'map', status: 'fulfilled', value: v }; },
+      (e) => { bump('map', false); return { key: 'map', status: 'rejected', reason: e }; }
+    )
+  ]);
+
+  if (gen !== _feedLoadGen) return;
+
+  const newsRes = results.find((r) => r.key === 'news');
+  const marketRes = results.find((r) => r.key === 'market');
+  const mapRes = results.find((r) => r.key === 'map');
 
   if (newsRes.status === 'fulfilled') {
     state.news = Array.isArray(newsRes.value.articles) ? newsRes.value.articles : [];
@@ -992,6 +1062,11 @@ async function refreshData() {
 
   renderAll();
   renderFooter(state.news);
+
+  window.setTimeout(() => {
+    if (gen !== _feedLoadGen) return;
+    setFeedLoadBarVisible(false);
+  }, 480);
 }
 
 // ── Event binding ──────────────────────────────────────────────────────────
@@ -1267,6 +1342,26 @@ function renderIntelligenceError(msg) {
   if (ageEl)  ageEl.textContent = 'Unavailable';
 }
 
+/** Server has no Groq key — calm empty state instead of a red error wall */
+function renderIntelligenceOffline() {
+  const rowEl   = document.getElementById('aiIndicatorsRow');
+  const ageEl   = document.getElementById('aiIntelAge');
+  const briefEl = document.getElementById('aiDailyBrief');
+  const watchEl = document.getElementById('aiWatchFor');
+  const synthEl = document.getElementById('aiSynthesisWrap');
+  if (ageEl) ageEl.textContent = 'Not configured';
+  if (briefEl) {
+    briefEl.innerHTML = `
+      <div class="ai-offline-panel">
+        <p class="ai-offline-title">Intelligence scan is off</p>
+        <p class="ai-offline-body">Set <code>GROQ_API_KEY</code> in the server environment to enable the AI briefing. The rest of the dashboard works without it.</p>
+      </div>`;
+  }
+  if (rowEl) rowEl.innerHTML = '';
+  if (watchEl) watchEl.innerHTML = '';
+  if (synthEl) synthEl.innerHTML = '';
+}
+
 async function fetchIntelligence(force = false) {
   // Client-side rate limit — don't hammer the endpoint
   if (!force && Date.now() - _intelLastFetch < INTEL_CLIENT_TTL) return;
@@ -1277,7 +1372,12 @@ async function fetchIntelligence(force = false) {
     const res  = await fetch(url, { cache: 'no-store' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      throw new Error(err.error || `HTTP ${res.status}`);
+      const msg = String(err.error || `HTTP ${res.status}`);
+      if (res.status === 503 && /GROQ|not configured/i.test(msg)) {
+        renderIntelligenceOffline();
+        return;
+      }
+      throw new Error(msg);
     }
     const data = await res.json();
     renderIntelligence(data);
