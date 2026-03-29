@@ -4,7 +4,7 @@ const REFRESH_MS = 300_000; // 5 min — matches server cache TTL
 // Railway URL on production (Vercel serves static only).
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? ''
-  : 'https://brief-pk-api.up.railway.app';
+  : 'https://brief-pk-newsfeed-production.up.railway.app';
 
 const BREAKING_LIMIT = 16;
 const CARD_LIMIT = 12;
