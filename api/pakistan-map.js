@@ -218,7 +218,7 @@ function toLevel(score) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=120');
+  res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=300');
 
   const force = req.query?.force === '1';
   if (!force && _mapCache && Date.now() - _mapCacheTs < MAP_CACHE_TTL) {

@@ -1,4 +1,11 @@
-const REFRESH_MS = 240_000;
+const REFRESH_MS = 300_000; // 5 min — matches server cache TTL
+
+// API base URL: empty on localhost (Express serves both static + API),
+// Railway URL on production (Vercel serves static only).
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? ''
+  : 'https://brief-pk-api.up.railway.app';
+
 const BREAKING_LIMIT = 16;
 const CARD_LIMIT = 12;
 const LIVE_LIMIT = 36;
@@ -948,19 +955,19 @@ function renderAll() {
 // ── Data fetching ──────────────────────────────────────────────────────────
 
 async function fetchNews() {
-  const res = await fetch('/api/news', { cache: 'no-store' });
+  const res = await fetch(`${API_BASE}/api/news`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`news_http_${res.status}`);
   return await res.json();
 }
 
 async function fetchMarket() {
-  const res = await fetch('/api/market', { cache: 'no-store' });
+  const res = await fetch(`${API_BASE}/api/market`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`market_http_${res.status}`);
   return await res.json();
 }
 
 async function fetchPakistanMap() {
-  const res = await fetch('/api/pakistan-map', { cache: 'no-store' });
+  const res = await fetch(`${API_BASE}/api/pakistan-map`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`pk_map_http_${res.status}`);
   return await res.json();
 }
@@ -1273,7 +1280,7 @@ async function fetchIntelligence(force = false) {
   _intelLastFetch = Date.now();
 
   try {
-    const url = `/api/intelligence${force ? '?force=1' : ''}`;
+    const url = `${API_BASE}/api/intelligence${force ? '?force=1' : ''}`;
     const res  = await fetch(url, { cache: 'no-store' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));

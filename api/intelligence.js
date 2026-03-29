@@ -97,7 +97,8 @@ Return ONLY a valid JSON object, no markdown fences, no explanation:
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'no-store');
+  // Cache at CDN for 30 min — matches server-side TTL and client throttle
+  res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=300');
 
   const apiKey = process.env.GROQ_API_KEY || process.env.Groq;
   if (!apiKey) {
