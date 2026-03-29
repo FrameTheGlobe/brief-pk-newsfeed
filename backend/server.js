@@ -41,7 +41,7 @@ app.get('/api/intelligence', (req, res) => intelligenceHandler(req, res));
 
 // ── Root health ping ──────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {
-  res.json({ service: 'brief.pk API', status: 'ok', version: '5.0.0' });
+  res.json({ service: 'brief.pk API', status: 'ok', version: '5.0.2' });
 });
 
 app.listen(port, () => {

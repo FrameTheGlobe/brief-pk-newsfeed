@@ -1,6 +1,6 @@
 {
   "name": "brief-pk-backend",
-  "version": "5.0.0",
+  "version": "5.0.2",
   "private": true,
   "description": "brief.pk API backend — runs on Railway",
   "scripts": {
