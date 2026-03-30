@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 30
-    }
-  },
   "headers": [
     {
       "source": "/",
@@ -25,12 +20,6 @@
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
         { "key": "Vary",          "value": "Accept-Encoding" }
-      ]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store" }
       ]
     }
   ],

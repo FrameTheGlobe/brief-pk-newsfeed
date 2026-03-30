@@ -1,0 +1,18 @@
+{
+  "name": "brief-pk-backend",
+  "version": "5.0.2",
+  "private": true,
+  "description": "brief.pk API backend — runs on Railway",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.0.0",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
