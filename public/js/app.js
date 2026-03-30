@@ -1,23 +1,16 @@
-const REFRESH_MS = 300_000; // 5 min — matches server cache TTL
+/** Poll often enough to stay near server news cache (~90s RSS TTL on Railway). */
+const REFRESH_MS = 90_000;
 
 // API base URL: empty on localhost (Express serves both static + API),
 // Railway URL on production (Vercel serves static only).
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? ''
   : 'https://brief-pk-newsfeed-production.up.railway.app';
-
 const BREAKING_LIMIT = 16;
 const CARD_LIMIT = 12;
-const LIVE_LIMIT = 36;
-
-const STOPWORDS = new Set([
-  'the', 'and', 'for', 'with', 'from', 'that', 'this', 'after', 'into', 'over', 'about', 'amid',
-  'pakistan', 'pakistani', 'says', 'said', 'will', 'have', 'has', 'its', 'their', 'his', 'her',
-  'news', 'report', 'reports', 'update', 'video', 'live', 'more', 'than', 'they', 'you', 'your'
-]);
 
 const CACHE_KEY = 'brief-pk-data-v2';
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 3 * 60 * 1000;
 
 const state = {
   updatedAt: null,
@@ -27,12 +20,17 @@ const state = {
   strictFocus: true,
   popPeriod: 'today',
   mapLayer: 'weather',
-  activeCategory: null,
   activeSource: null,
   searchQuery: ''
 };
 
 // ── Utils ──────────────────────────────────────────────────────────────────
+
+function publishedMs(iso) {
+  if (iso == null || iso === '') return null;
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) ? t : null;
+}
 
 function escapeHtml(text) {
   return String(text || '')
@@ -44,6 +42,7 @@ function escapeHtml(text) {
 }
 
 function relTime(iso) {
+  if (iso == null || iso === '') return '--';
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return '--';
   const diffMs = Date.now() - t;
@@ -57,6 +56,7 @@ function relTime(iso) {
 }
 
 function relTimeClass(iso) {
+  if (iso == null || iso === '') return 'time-stale';
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return 'time-stale';
   const mins = Math.floor((Date.now() - t) / 60000);
@@ -72,6 +72,15 @@ function relTimeBadge(iso) {
 function fmtNum(value, digits = 2) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
   return Number(value).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+}
+
+/** Snapshot numbers: avoid trailing zeros for large crypto / small FX moves */
+function fmtSnapNumber(value, maxDigits = 2) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  const n = Number(value);
+  const abs = Math.abs(n);
+  const d = abs >= 10000 ? 0 : abs >= 100 ? maxDigits : abs >= 1 ? maxDigits : 4;
+  return n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: 0 });
 }
 
 function pct(current, previous) {
@@ -120,7 +129,6 @@ function filteredNews() {
       if ((item.relevanceScore || 0) < 7) return false;
       if (item.scope === 'external' && !item.directPakistanSignal) return false;
     }
-    if (state.activeCategory && item.category !== state.activeCategory) return false;
     if (state.activeSource && item.source !== state.activeSource) return false;
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
@@ -141,8 +149,8 @@ function aggregateCounts(items, keyFn) {
 }
 
 function inLastMinutes(item, minutes) {
-  const t = new Date(item.publishedAt).getTime();
-  if (!Number.isFinite(t)) return false;
+  const t = publishedMs(item.publishedAt);
+  if (t == null) return false;
   return t >= (Date.now() - minutes * 60_000);
 }
 
@@ -316,50 +324,6 @@ function renderSearchResults() {
   `).join('');
 }
 
-function renderCategoryActivity(items) {
-  const el = document.getElementById('categoryActivity');
-  if (!el) return;
-
-  const counts = aggregateCounts(items, (n) => n.category).slice(0, 8);
-  const max = counts[0]?.[1] || 1;
-
-  el.innerHTML = counts.map(([cat, count]) => {
-    const p = Math.round((count / max) * 100);
-    return `
-      <div class="cat-bar-row">
-        <span class="cat-bar-label">${escapeHtml(cat)}</span>
-        <div class="cat-bar-track">
-          <div class="cat-bar-fill" style="width:${p}%"></div>
-        </div>
-        <span class="cat-bar-count">${count}</span>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderKeywordSignals(items) {
-  const el = document.getElementById('keywordSignals');
-  if (!el) return;
-
-  const freq = new Map();
-  for (const item of items.slice(0, 180)) {
-    const tokens = `${item.title} ${item.description}`
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, ' ')
-      .split(/\s+/)
-      .filter((t) => t.length >= 4 && !STOPWORDS.has(t));
-
-    for (const token of tokens.slice(0, 14)) {
-      freq.set(token, (freq.get(token) || 0) + 1);
-    }
-  }
-
-  const top = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
-  el.innerHTML = top.map(([k, c]) => `
-    <span class="kw-pill" title="${c} mentions">${escapeHtml(k)}</span>
-  `).join('');
-}
-
 function renderMarketTicker() {
   const el = document.getElementById('marketTickerTrack');
   const viewport = document.getElementById('marketTickerViewport');
@@ -445,7 +409,10 @@ function renderHeaderSignals(items) {
   const commoditiesAgeMinutes = m.meta?.commoditiesAgeMinutes;
 
   const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-  const items24h = items.filter((i) => new Date(i.publishedAt).getTime() >= oneDayAgo);
+  const items24h = items.filter((i) => {
+    const t = publishedMs(i.publishedAt);
+    return t != null && t >= oneDayAgo;
+  });
   const energy24h = items24h.filter((i) => i.category === 'Energy' || i.category === 'Markets').length;
   const mentionCount = (re) => items24h.filter((i) => re.test(`${i.title} ${i.description}`.toLowerCase())).length;
   const imf24h = mentionCount(/\bimf\b/);
@@ -519,13 +486,8 @@ function renderCategories(items) {
   const el = document.getElementById('categorySections');
   if (!el) return;
 
-  // If a category is active, only show that one
-  const pool = state.activeCategory
-    ? items.filter(n => n.category === state.activeCategory)
-    : items;
-
   const byCat = new Map();
-  for (const n of pool) {
+  for (const n of items) {
     if (!byCat.has(n.category)) byCat.set(n.category, []);
     byCat.get(n.category).push(n);
   }
@@ -567,77 +529,12 @@ function renderCategories(items) {
     .join('');
 }
 
-function renderTrendRadar(items) {
-  const el = document.getElementById('trendRadar');
-  if (!el) return;
-
-  const trend = aggregateCounts(items, (n) => n.category).slice(0, 8);
-  const max = trend[0]?.[1] || 1;
-  el.innerHTML = `<ul class="trend-list">${trend
-    .map(([name, count]) => {
-      const pct = Math.round((count / max) * 100);
-      return `
-        <li class="trend-item">
-          <div class="trend-bar-wrap">
-            <span class="trend-bar-bg" style="width:${pct}%"></span>
-            <span class="trend-name trend-label">${escapeHtml(name)}</span>
-            <span class="trend-meta trend-count">${count}</span>
-          </div>
-        </li>
-      `;
-    })
-    .join('')}</ul>`;
-}
-
-function renderSourceDominance(items) {
-  const el = document.getElementById('sourceDominance');
-  if (!el) return;
-
-  const sourceCounts = aggregateCounts(items, (n) => n.source).slice(0, 8);
-  const total = sourceCounts.reduce((acc, [, c]) => acc + c, 0) || 1;
-
-  el.innerHTML = sourceCounts
-    .map(([source, count]) => {
-      const share = (count / total) * 100;
-      return `
-        <div class="source-row">
-          <div class="source-head">
-            <span class="source-name">${escapeHtml(source)}</span>
-            <span class="source-pct">${share.toFixed(1)}%</span>
-          </div>
-          <div class="source-bar"><span style="width:${share}%"></span></div>
-        </div>
-      `;
-    })
-    .join('');
-}
-
-function renderLiveFeed(items) {
-  const el = document.getElementById('liveFeed');
-  if (!el) return;
-
-  el.innerHTML = `<div class="live-list">${items
-    .slice(0, LIVE_LIMIT)
-    .map(
-      (n) => `
-      <a href="${escapeHtml(n.url)}" class="live-item" target="_blank" rel="noopener noreferrer">
-        <div class="live-title">${escapeHtml(n.title)}</div>
-        <div class="live-meta">${escapeHtml(n.source)} · ${escapeHtml(n.scope)} · ${relTimeBadge(n.publishedAt)}</div>
-      </a>
-    `
-    )
-    .join('')}</div>`;
-}
-
-function renderLeftRail(items) {
-  const catEl = document.getElementById('categoryNav');
+function renderLeftRail() {
   const srcEl = document.getElementById('sourceNav');
   const pulseEl = document.getElementById('pulseBoard');
-  const narrativeEl = document.getElementById('narrativeMap');
-  const clearCatBtn = document.getElementById('clearCategoryBtn');
   const clearSrcBtn = document.getElementById('clearSourceBtn');
 
-  // All items (unfiltered by category/source) for nav counts
+  // All items (unfiltered by source) for nav counts
   const allFiltered = state.news.filter((item) => {
     if (state.strictFocus) {
       if ((item.relevanceScore || 0) < 7) return false;
@@ -645,27 +542,6 @@ function renderLeftRail(items) {
     }
     return true;
   });
-
-  if (catEl) {
-    const rows = aggregateCounts(allFiltered, (n) => n.category).slice(0, 14);
-    catEl.innerHTML = rows.map(([k, c]) => `
-      <li class="nav-item${state.activeCategory === k ? ' active' : ''}" data-cat="${escapeHtml(k)}">
-        <span>${escapeHtml(k)}</span>
-        <span class="count">${c}</span>
-      </li>
-    `).join('');
-
-    catEl.querySelectorAll('.nav-item').forEach(li => {
-      li.addEventListener('click', () => {
-        const cat = li.dataset.cat;
-        state.activeCategory = state.activeCategory === cat ? null : cat;
-        if (clearCatBtn) clearCatBtn.style.display = state.activeCategory ? '' : 'none';
-        renderAll();
-      });
-    });
-
-    if (clearCatBtn) clearCatBtn.style.display = state.activeCategory ? '' : 'none';
-  }
 
   if (srcEl) {
     const rows = aggregateCounts(allFiltered, (n) => n.source).slice(0, 14);
@@ -691,7 +567,10 @@ function renderLeftRail(items) {
   if (pulseEl) {
     const now = Date.now();
     const hr = 60 * 60 * 1000;
-    const window6h = allFiltered.filter((n) => now - new Date(n.publishedAt).getTime() <= 6 * hr);
+    const window6h = allFiltered.filter((n) => {
+      const t = publishedMs(n.publishedAt);
+      return t != null && now - t <= 6 * hr;
+    });
     const highPriority = allFiltered.filter((n) => n.priority === 'high').length;
     const internalShare = allFiltered.length ? Math.round((allFiltered.filter((n) => n.scope === 'internal').length / allFiltered.length) * 100) : 0;
     const energyShare = allFiltered.length ? Math.round((allFiltered.filter((n) => n.category === 'Energy' || n.category === 'Markets').length / allFiltered.length) * 100) : 0;
@@ -705,20 +584,6 @@ function renderLeftRail(items) {
       </div>
     `;
   }
-
-  if (narrativeEl) {
-    const topCats = aggregateCounts(allFiltered, (n) => n.category).slice(0, 5);
-    const max = topCats[0]?.[1] || 1;
-    narrativeEl.innerHTML = topCats.map(([label, count]) => {
-      const width = Math.max(12, Math.round((count / max) * 100));
-      return `
-        <div class="narrative-row">
-          <div class="narrative-meta"><span>${escapeHtml(label)}</span><strong>${count}</strong></div>
-          <div class="narrative-track"><div class="narrative-fill" style="width:${width}%"></div></div>
-        </div>
-      `;
-    }).join('');
-  }
 }
 
 function renderPopularNews() {
@@ -728,14 +593,22 @@ function renderPopularNews() {
   const dayMs = 24 * 60 * 60 * 1000;
   let pool = state.news;
   if (state.popPeriod === 'today') {
-    pool = state.news.filter(n => (now - new Date(n.publishedAt).getTime()) < dayMs);
+    pool = state.news.filter((n) => {
+      const t = publishedMs(n.publishedAt);
+      return t != null && now - t < dayMs;
+    });
   } else if (state.popPeriod === 'yesterday') {
-    pool = state.news.filter(n => {
-      const diff = now - new Date(n.publishedAt).getTime();
+    pool = state.news.filter((n) => {
+      const t = publishedMs(n.publishedAt);
+      if (t == null) return false;
+      const diff = now - t;
       return diff >= dayMs && diff < 2 * dayMs;
     });
   } else if (state.popPeriod === '3d') {
-    pool = state.news.filter(n => (now - new Date(n.publishedAt).getTime()) < 3 * dayMs);
+    pool = state.news.filter((n) => {
+      const t = publishedMs(n.publishedAt);
+      return t != null && now - t < 3 * dayMs;
+    });
   }
   const items = (pool.length > 0 ? pool : state.news).slice(0, 8);
   el.innerHTML = items.map(n => `
@@ -752,6 +625,46 @@ function renderMarketSnapshot() {
   const el = document.getElementById('marketSnapshot');
   if (!el || !state.market) return;
   const m = state.market;
+  const snap = m.marketSnapshot;
+
+  if (snap && Array.isArray(snap.panels)) {
+    const staleNote = m.meta?.commoditiesStale
+      ? '<div class="mkt-snap-stale">Commodity leg stale (&gt;3h) — directional only.</div>'
+      : '';
+    const foot = snap.disclaimer
+      ? `<p class="mkt-snap-foot">${escapeHtml(snap.disclaimer)}</p>`
+      : '';
+
+    const rowHtml = (r) => {
+      const ref = r.reference ? ' mkt-row--ref' : '';
+      const val =
+        r.textValue != null
+          ? `<span class="mkt-val mkt-val--text">${escapeHtml(r.textValue)}</span>`
+          : `<span class="mkt-val">${escapeHtml(r.prefix || '')}${fmtSnapNumber(r.value)}${escapeHtml(r.suffix || '')}</span>`;
+      const chg =
+        !r.reference && r.changePct != null && Number.isFinite(r.changePct)
+          ? `<span class="mkt-chg ${chgClass(r.changePct)}">${chgLabel(r.changePct)}</span>`
+          : '';
+      const hint = r.hint ? `<span class="mkt-row-hint" title="${escapeHtml(r.hint)}">ⓘ</span>` : '';
+      return `<div class="mkt-row${ref}"><span class="mkt-label">${escapeHtml(r.label)}</span>${val}${chg}${hint}</div>`;
+    };
+
+    const panels = snap.panels
+      .map((p) => {
+        const hint = p.hint
+          ? `<div class="mkt-subhint">${escapeHtml(p.hint)}</div>`
+          : '';
+        const rows = (p.rows || []).map(rowHtml).join('');
+        return `<section class="mkt-panel"><h3 class="mkt-panel-title">${escapeHtml(p.title)}</h3>${hint}<div class="mkt-panel-rows">${rows}</div></section>`;
+      })
+      .join('');
+
+    el.classList.add('market-snapshot--extended');
+    el.innerHTML = `${staleNote}<div class="mkt-panels">${panels}</div>${foot}`;
+    return;
+  }
+
+  el.classList.remove('market-snapshot--extended');
   const usdPkr = m?.fx?.usdPkr;
   const kse = m?.equities?.kse100;
   const gold = m?.commodities?.goldUsdPerOz;
@@ -773,15 +686,27 @@ function renderMarketSnapshot() {
   ].join('');
 }
 
+function setPakistanMapLayer(layer) {
+  const L =
+    layer === 'aqi' || layer === 'agri' || layer === 'flights' ? layer : 'weather';
+  state.mapLayer = L;
+  document.querySelectorAll('.pk-layer-btn').forEach((b) => {
+    b.classList.toggle('active', (b.dataset.layer || 'weather') === L);
+  });
+  renderPakistanNerveCenter();
+}
+
 function renderPakistanNerveCenter() {
   const mapEl = document.getElementById('pkMapCanvas');
   const hotspotsEl = document.getElementById('pkMapHotspots');
+  const kpisEl = document.getElementById('pkTelKpis');
   if (!mapEl || !hotspotsEl) return;
 
   const payload = state.pakistanMap;
   if (!payload || !Array.isArray(payload.points)) {
-    mapEl.innerHTML = '<div class="pk-map-empty">Pakistan map intelligence is loading...</div>';
-    hotspotsEl.innerHTML = '<div class="pk-hotspot-empty">No hotspot data yet.</div>';
+    if (kpisEl) kpisEl.innerHTML = '';
+    mapEl.innerHTML = '<div class="pk-map-empty">Telemetry is loading…</div>';
+    hotspotsEl.innerHTML = '<div class="pk-hotspot-empty">No detail yet.</div>';
     return;
   }
 
@@ -808,42 +733,79 @@ function renderPakistanNerveCenter() {
     return 'normal';
   };
 
-  const markerLabel = (point) => {
-    if (layer === 'flights') {
-      return Number.isFinite(point.flights?.count) ? `${point.flights.count} flights` : 'Flights --';
-    }
-    if (layer === 'aqi') {
-      return Number.isFinite(point.aqi?.usAqi) ? `AQI ${Math.round(point.aqi.usAqi)}` : 'AQI --';
-    }
-    if (layer === 'agri') {
-      return Number.isFinite(point.agri?.score) ? `Stress ${point.agri.score}` : 'Stress --';
-    }
-    return Number.isFinite(point.weather?.temperatureC) ? `${Math.round(point.weather.temperatureC)}°` : '--';
+  const layerRiskKey = layer === 'aqi' ? 'aqi' : (layer === 'agri' ? 'agri' : (layer === 'flights' ? 'flights' : 'weather'));
+  const sortedPoints = [...points].sort((a, b) => {
+    const sa = Number.isFinite(a[layerRiskKey]?.score) ? a[layerRiskKey].score : -1;
+    const sb = Number.isFinite(b[layerRiskKey]?.score) ? b[layerRiskKey].score : -1;
+    if (sb !== sa) return sb - sa;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+
+  const s = payload.summary || {};
+  const kpiVal = (v) => (Number.isFinite(v) ? String(Math.round(v)) : '—');
+
+  if (kpisEl) {
+    const kpiBtn = (ly, label, abbrev) => {
+      const v =
+        ly === 'weather' ? s.weatherAverage
+          : ly === 'aqi' ? s.aqiAverage
+            : ly === 'agri' ? s.agriAverage
+              : s.flightsAverage;
+      const active = layer === ly ? ' pk-kpi--active' : '';
+      const suff = Number.isFinite(v) ? '<span class="pk-kpi-suffix">/100</span>' : '';
+      return `
+        <button type="button" class="pk-kpi${active}" data-layer="${ly}" aria-pressed="${layer === ly ? 'true' : 'false'}">
+          <span class="pk-kpi-abbr">${abbrev}</span>
+          <span class="pk-kpi-l">${label}</span>
+          <span class="pk-kpi-v">${kpiVal(v)}${suff}</span>
+        </button>`;
+    };
+    kpisEl.innerHTML = `
+      <div class="pk-kpi-row">
+        ${kpiBtn('weather', 'Weather risk', 'Wx')}
+        ${kpiBtn('aqi', 'AQI pressure', 'AQ')}
+        ${kpiBtn('agri', 'Crop stress', 'Ag')}
+        ${kpiBtn('flights', 'Airspace', 'Fl')}
+      </div>`;
+  }
+
+  const thClass = (ly) => (layer === ly ? ' class="pk-col-em"' : '');
+  const cell = (score, kind, inner) => {
+    const t = toneClass(score, kind);
+    return `<td class="pk-cell tone-${t}">${inner}</td>`;
   };
 
   mapEl.innerHTML = `
-    <div class="pk-map-stage">
-      <svg class="pk-map-outline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M57,5 L67,8 L76,12 L80,18 L78,24 L76,30 L78,37 L76,43 L73,50 L68,57 L62,63 L58,70 L55,76 L53,82 L50,86 L46,90 L40,92 L36,90 L30,87 L22,84 L16,81 L12,79 L10,73 L8,62 L8,52 L10,44 L13,38 L17,30 L22,23 L28,17 L35,13 L43,10 L50,7 L57,5 Z"></path>
-      </svg>
-      ${points
-        .map((point) => {
-          const risk = layer === 'aqi'
-            ? point.aqi
-            : (layer === 'agri' ? point.agri : (layer === 'flights' ? point.flights : point.weather));
-          const score = risk?.score;
-          const tone = toneClass(score, layer);
-          return `
-            <button class="pk-node ${tone}" style="left:${point.x}%;top:${point.y}%" title="${escapeHtml(point.name)} · ${escapeHtml(markerLabel(point))}">
-              <span class="pk-node-dot"></span>
-              <span class="pk-node-label">${escapeHtml(point.name)}</span>
-              <span class="pk-node-meta">${escapeHtml(markerLabel(point))}</span>
-            </button>
-          `;
-        })
-        .join('')}
-    </div>
-  `;
+    <table class="pk-tel-table">
+      <thead>
+        <tr>
+          <th scope="col">City</th>
+          <th scope="col"${thClass('weather')}>°C</th>
+          <th scope="col"${thClass('aqi')}>AQI</th>
+          <th scope="col"${thClass('agri')}>Agri</th>
+          <th scope="col"${thClass('flights')}>Flt</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sortedPoints
+          .map((p) => {
+            const temp = Number.isFinite(p.weather?.temperatureC)
+              ? `${Math.round(p.weather.temperatureC)}°`
+              : '—';
+            const aqiNum = Number.isFinite(p.aqi?.usAqi) ? String(Math.round(p.aqi.usAqi)) : '—';
+            const agri = Number.isFinite(p.agri?.score) ? String(p.agri.score) : '—';
+            const fl = Number.isFinite(p.flights?.count) ? String(p.flights.count) : '—';
+            return `<tr>
+              <th scope="row" class="pk-city">${escapeHtml(p.name)}</th>
+              ${cell(p.weather?.score, 'weather', `<span class="pk-num">${temp}</span>`)}
+              ${cell(p.aqi?.score, 'aqi', `<span class="pk-num">${aqiNum}</span>`)}
+              ${cell(p.agri?.score, 'agri', `<span class="pk-num">${agri}</span>`)}
+              ${cell(p.flights?.score, 'flights', `<span class="pk-num">${fl}</span>`)}
+            </tr>`;
+          })
+          .join('')}
+      </tbody>
+    </table>`;
 
   const hotspots = layer === 'aqi'
     ? payload.summary?.aqiHotspots
@@ -935,14 +897,9 @@ function renderAll() {
   renderBreaking(items);
   renderCategories(items);
   renderPopularNews();
-  renderTrendRadar(items);
-  renderSourceDominance(items);
   renderPakistanNerveCenter();
   renderMarketSnapshot();
-  renderCategoryActivity(items);
-  renderKeywordSignals(items);
-  renderLiveFeed(items);
-  renderLeftRail(items);
+  renderLeftRail();
   renderTodaysBriefing(items);
   renderPsxPerformers();
   renderFocusCount();
@@ -978,7 +935,7 @@ let _feedLoadGen = 0;
 const FEED_LOAD_STEPS = [
   { id: 'news', label: 'RSS news' },
   { id: 'market', label: 'Markets' },
-  { id: 'map', label: 'Nerve map' }
+  { id: 'map', label: 'Telemetry' }
 ];
 
 function setFeedLoadBarVisible(visible) {
@@ -1108,16 +1065,21 @@ function bindEvents() {
     });
   });
 
-  // Pakistan map layer buttons
+  const telWidget = document.querySelector('.pk-tel-widget');
+  if (telWidget) {
+    telWidget.addEventListener('click', (e) => {
+      const kpi = e.target.closest('.pk-kpi');
+      if (kpi && kpi.dataset.layer) {
+        e.preventDefault();
+        setPakistanMapLayer(kpi.dataset.layer);
+      }
+    });
+  }
+
   const layerBtns = document.querySelectorAll('.pk-layer-btn');
   layerBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      const layer = (btn.dataset.layer === 'aqi' || btn.dataset.layer === 'agri' || btn.dataset.layer === 'flights')
-        ? btn.dataset.layer
-        : 'weather';
-      state.mapLayer = layer;
-      layerBtns.forEach((b) => b.classList.toggle('active', b === btn));
-      renderPakistanNerveCenter();
+      setPakistanMapLayer(btn.dataset.layer || 'weather');
     });
   });
 
@@ -1179,16 +1141,6 @@ function bindEvents() {
       renderPsxPerformers(btn.dataset.perf);
     });
   });
-
-  // Clear category filter
-  const clearCatBtn = document.getElementById('clearCategoryBtn');
-  if (clearCatBtn) {
-    clearCatBtn.addEventListener('click', () => {
-      state.activeCategory = null;
-      clearCatBtn.style.display = 'none';
-      renderAll();
-    });
-  }
 
   // Clear source filter
   const clearSrcBtn = document.getElementById('clearSourceBtn');

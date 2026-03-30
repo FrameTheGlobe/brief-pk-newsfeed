@@ -1,17 +1,20 @@
 // ── Server-side in-memory cache ──────────────────────────────────────────────
 let _marketCache = null;
 let _marketCacheTs = 0;
-const MARKET_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MARKET_CACHE_TTL = 90 * 1000; // ~1.5 minutes — PSX session moves during the day
 
 const MARKET_ENDPOINTS = {
   usdPkr: 'https://open.er-api.com/v6/latest/USD',
+  /** No-key fallback (Fawaz loosely-curated daily FX matrix) if ER-API is slow or blocked */
+  usdPkrFallback: 'https://latest.currency-api.pages.dev/v1/currencies/usd.json',
   stooqBase: 'https://stooq.com/q/l/',
   fredBrent: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU',
   // query2 bypasses the Vercel IP block that query1 enforces
   yahooChartBase: 'https://query2.finance.yahoo.com/v8/finance/chart',
   yahooSpark: 'https://query2.finance.yahoo.com/v7/finance/spark',
   yahooKse: 'https://query2.finance.yahoo.com/v8/finance/chart/%5EKSE?interval=1d&range=5d',
-  psxIndices: 'https://dps.psx.com.pk/api/indices',
+  /** PSX removed JSON /api/indices (404); indices page is server-rendered with live data-order cells */
+  psxIndicesPage: 'https://dps.psx.com.pk/indices',
   psxPerformers: 'https://dps.psx.com.pk/performers',
   psxAnnouncements: 'https://dps.psx.com.pk/announcements'
 };
@@ -29,6 +32,31 @@ const STOOQ_SYMBOLS = {
   gold: 'xauusd',
   gasoline: 'rb.f'
 };
+
+/** Extra Yahoo chart symbols for the expanded market snapshot (no API keys). */
+const SNAPSHOT_CHARTS = [
+  { key: 'silver', symbol: 'SI=F', label: 'Silver', prefix: '$', suffix: '/oz' },
+  { key: 'wti', symbol: 'CL=F', label: 'WTI crude', prefix: '$', suffix: '/bbl' },
+  { key: 'platinum', symbol: 'PL=F', label: 'Platinum', prefix: '$', suffix: '/oz' },
+  { key: 'palladium', symbol: 'PA=F', label: 'Palladium', prefix: '$', suffix: '/oz' },
+  { key: 'copper', symbol: 'HG=F', label: 'Copper', prefix: '$', suffix: '/lb' },
+  { key: 'corn', symbol: 'ZC=F', label: 'Corn', prefix: '', suffix: '¢/bu' },
+  { key: 'wheat', symbol: 'ZW=F', label: 'Wheat', prefix: '', suffix: '¢/bu' },
+  { key: 'btc', symbol: 'BTC-USD', label: 'Bitcoin', prefix: '$', suffix: '' },
+  { key: 'eth', symbol: 'ETH-USD', label: 'Ethereum', prefix: '$', suffix: '' },
+  { key: 'eurUsd', symbol: 'EURUSD=X', label: 'EUR/USD', prefix: '', suffix: '' }
+];
+
+/**
+ * Order-of-magnitude Pakistan energy context (annual / survey figures — not live prices).
+ * Numbers are rounded public-estimate bands; always read against MOE / OGRA / company filings.
+ */
+const PAKISTAN_ENERGY_REFERENCE = [
+  { label: 'Proven oil (band)', value: '~0.3–0.6 Bbbl', hint: 'International survey ballparks; domestic fields vary year to year' },
+  { label: 'Proven gas (band)', value: '~20+ Tcf', hint: 'Order of magnitude — Sui / tight gas / new discoveries move totals' },
+  { label: 'Refining nameplate', value: '~400 kb/d', hint: 'Aggregated capacity; utilisation & crude slate drive product supply' },
+  { label: 'LNG / products', value: 'Import-led', hint: 'Brent + JKM / freight set power & industrial gas cost pressure' }
+];
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -62,13 +90,13 @@ async function fetchYahooJson(url, timeoutMs = 7000) {
   }
 }
 
-async function fetchText(url, timeoutMs = 7000) {
+async function fetchText(url, timeoutMs = 7000, extraHeaders = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'user-agent': UA, 'x-requested-with': 'XMLHttpRequest' }
+      headers: { 'user-agent': UA, 'x-requested-with': 'XMLHttpRequest', 'accept': 'text/html,application/xhtml+xml,*/*', ...extraHeaders }
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.text();
@@ -301,31 +329,126 @@ function parseIndices(indices) {
   };
 }
 
+/**
+ * PSX DPS "Market Indices" HTML: each row has data-code="KSE100" etc. and
+ * numeric cells use data-order="…" (high, low, current, change, % change).
+ */
+function parsePsxIndicesFromHtml(html) {
+  if (!html || typeof html !== 'string' || html.length < 500) return null;
+  const tbMatch = html.match(/id="indicesTable"[\s\S]*?<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+  if (!tbMatch) return null;
+  const tbody = tbMatch[1];
+  const byCode = Object.create(null);
+  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let tm;
+  while ((tm = trRe.exec(tbody)) !== null) {
+    const tr = tm[1];
+    const dc = tr.match(/data-code="([^"]+)"/i);
+    if (!dc) continue;
+    const orders = [...tr.matchAll(/<td class="right"[^>]*data-order="([^"]+)"/gi)].map((m) => parseFloat(m[1]));
+    if (orders.length < 5) continue;
+    const [, , current, change, changePct] = orders;
+    if (!Number.isFinite(current)) continue;
+    byCode[dc[1].toUpperCase()] = {
+      value: current,
+      change: Number.isFinite(change) ? change : 0,
+      changePct: Number.isFinite(changePct) ? changePct : 0
+    };
+  }
+  const pick = (code) => {
+    const row = byCode[code];
+    if (!row || !Number.isFinite(row.value)) return null;
+    return { value: row.value, change: row.change, changePct: row.changePct };
+  };
+  const out = {
+    kse100: pick('KSE100'),
+    kse30: pick('KSE30'),
+    allshr: pick('ALLSHR')
+  };
+  return out.kse100 || out.kse30 || out.allshr ? out : null;
+}
+
+function resolveUsdPkr(fxErRes, fxFallbackRes) {
+  if (fxErRes?.status === 'fulfilled' && fxErRes.value?.rates?.PKR != null) {
+    const v = Number(fxErRes.value.rates.PKR);
+    if (Number.isFinite(v) && v > 0) return v;
+  }
+  if (fxFallbackRes?.status === 'fulfilled' && fxFallbackRes.value?.usd?.pkr != null) {
+    const v = Number(fxFallbackRes.value.usd.pkr);
+    if (Number.isFinite(v) && v > 0) return v;
+  }
+  return 278.99;
+}
+
 function parsePerformers(html) {
   if (!html || html.length < 100) return null;
-  const sections = { gainers: [], losers: [], active: [] };
-  const extractRows = (segment) => {
-    if (!segment) return [];
+
+  /** PSX DPS 2025+ layout: h3 headings + tbl / <strong> symbols + change cell with (pct%) */
+  const extractRowsModern = (tbodyInner) => {
+    if (!tbodyInner) return [];
     const rows = [];
-    const re = /<tr>\s*<td>(?:<a[^>]*>)?([^<]+)(?:<\/a>)?<\/td>\s*<td>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)%?<\/td>/gi;
-    let m;
-    while ((m = re.exec(segment)) !== null && rows.length < 10) {
+    const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let tm;
+    while ((tm = trRe.exec(tbodyInner)) !== null && rows.length < 12) {
+      const tr = tm[1];
+      const symMatch = tr.match(/<strong>([^<]+)<\/strong>/i);
+      if (!symMatch) continue;
+      const tdMatches = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
+      if (tdMatches.length < 3) continue;
+      const priceText = tdMatches[1][1].replace(/<[^>]+>/g, '').replace(/,/g, '').trim();
+      const price = parseFloat(priceText);
+      const changePlain = tdMatches[2][1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const pctM = changePlain.match(/\(\s*(-?[\d.]+)\s*%\s*\)/);
+      const changePct = pctM ? parseFloat(pctM[1]) : NaN;
+      const leadM = changePlain.match(/(-?[\d,]+(?:\.\d+)?)\s*\(/);
+      const change = leadM ? parseFloat(leadM[1].replace(/,/g, '')) : NaN;
       rows.push({
-        symbol: m[1].trim(),
-        price: parseFloat(m[2].replace(/,/g, '')),
-        change: parseFloat(m[3]),
-        changePct: parseFloat(m[4])
+        symbol: symMatch[1].trim(),
+        price: Number.isFinite(price) ? price : null,
+        change: Number.isFinite(change) ? change : null,
+        changePct: Number.isFinite(changePct) ? changePct : null
       });
     }
     return rows;
   };
-  const adv = html.match(/id="advancers"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
-  const dec = html.match(/id="decliners"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
-  const act = html.match(/id="active"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
-  if (adv) sections.gainers = extractRows(adv[1]);
-  if (dec) sections.losers = extractRows(dec[1]);
-  if (act) sections.active = extractRows(act[1]);
-  return sections;
+
+  const tbodyAfterHeading = (needle) => {
+    const i = html.toUpperCase().indexOf(needle.toUpperCase());
+    if (i < 0) return null;
+    const slice = html.slice(i);
+    const m = slice.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+    return m ? m[1] : null;
+  };
+
+  let gainers = extractRowsModern(tbodyAfterHeading('TOP ADVANCERS'));
+  let losers = extractRowsModern(tbodyAfterHeading('TOP DECLINERS'));
+  let active = extractRowsModern(tbodyAfterHeading('TOP ACTIVE STOCKS'));
+
+  if (!gainers.length && !losers.length && !active.length) {
+    const extractRowsLegacy = (segment) => {
+      if (!segment) return [];
+      const rows = [];
+      const re = /<tr>\s*<td>(?:<a[^>]*>)?([^<]+)(?:<\/a>)?<\/td>\s*<td>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)%?<\/td>/gi;
+      let m;
+      while ((m = re.exec(segment)) !== null && rows.length < 10) {
+        rows.push({
+          symbol: m[1].trim(),
+          price: parseFloat(m[2].replace(/,/g, '')),
+          change: parseFloat(m[3]),
+          changePct: parseFloat(m[4])
+        });
+      }
+      return rows;
+    };
+    const adv = html.match(/id="advancers"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
+    const dec = html.match(/id="decliners"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
+    const act = html.match(/id="active"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
+    if (adv) gainers = extractRowsLegacy(adv[1]);
+    if (dec) losers = extractRowsLegacy(dec[1]);
+    if (act) active = extractRowsLegacy(act[1]);
+  }
+
+  return { gainers, losers, active };
 }
 
 function parseAnnouncements(html) {
@@ -335,11 +458,16 @@ function parseAnnouncements(html) {
   const announcements = [];
   let m;
   while ((m = re.exec(html)) !== null && announcements.length < 15) {
+    const symbol = m[2].trim();
+    let subject = m[4].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    // PSX often repeats the ticker at the start of the subject line
+    const dup = new RegExp(`^${symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[-–—:\\s]+`, 'i');
+    subject = subject.replace(dup, '').trim();
     announcements.push({
       time: m[1].trim(),
-      symbol: m[2].trim(),
+      symbol,
       company: m[3].trim(),
-      subject: m[4].replace(/<[^>]+>/g, '').trim()
+      subject
     });
   }
   return announcements.length > 0 ? announcements : null;
@@ -347,7 +475,7 @@ function parseAnnouncements(html) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+  res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=30');
 
   const force = req.query?.force === '1';
   if (!force && _marketCache && Date.now() - _marketCacheTs < MARKET_CACHE_TTL) {
@@ -361,8 +489,32 @@ module.exports = async function handler(req, res) {
       'accept': 'application/json, text/html, */*'
     };
 
+    const SNAPSHOT_BASE_LEN = 16;
+    const settledAll = await Promise.allSettled([
+      fetchJson(MARKET_ENDPOINTS.usdPkr),
+      fetchJson(MARKET_ENDPOINTS.usdPkrFallback),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.brent)),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gasHenryHub)),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gold)),
+      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gasoline)),
+      fetchText(MARKET_ENDPOINTS.fredBrent),
+      fetchText(MARKET_ENDPOINTS.psxIndicesPage, 7000, PSX_HEADERS),
+      fetchText(MARKET_ENDPOINTS.psxPerformers),
+      fetchYahooJson(MARKET_ENDPOINTS.yahooKse),
+      fetchPostForm(MARKET_ENDPOINTS.psxAnnouncements, { type: 'C', symbol: '', count: 20, offset: 0, page: 'annc' }),
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/BZ=F?interval=1d&range=5d`),
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/NG=F?interval=1d&range=5d`),
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/GC=F?interval=1d&range=5d`),
+      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/RB=F?interval=1d&range=5d`),
+      fetchYahooJson(yahooSparkUrl(Object.values(YAHOO_COMMODITY_SYMBOLS))),
+      ...SNAPSHOT_CHARTS.map(({ symbol }) =>
+        fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/${encodeURIComponent(symbol)}?interval=1d&range=5d`)
+      )
+    ]);
+
     const [
       fxRes,
+      fxFallbackRes,
       stooqBrentRes,
       stooqGasRes,
       stooqGoldRes,
@@ -377,33 +529,24 @@ module.exports = async function handler(req, res) {
       yahooGoldRes,
       yahooGasolineRes,
       yahooCommoditySparkRes
-    ] = await Promise.allSettled([
-      fetchJson(MARKET_ENDPOINTS.usdPkr),
-      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.brent)),
-      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gasHenryHub)),
-      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gold)),
-      fetchText(stooqQuoteUrl(STOOQ_SYMBOLS.gasoline)),
-      fetchText(MARKET_ENDPOINTS.fredBrent),
-      fetchJson(MARKET_ENDPOINTS.psxIndices, 7000, PSX_HEADERS),
-      fetchText(MARKET_ENDPOINTS.psxPerformers),
-      fetchYahooJson(MARKET_ENDPOINTS.yahooKse),
-      fetchPostForm(MARKET_ENDPOINTS.psxAnnouncements, { type: 'C', symbol: '', count: 20, offset: 0, page: 'annc' }),
-      // Individual per-commodity chart fetches (query2) — more reliable than spark
-      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/BZ=F?interval=1d&range=5d`),
-      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/NG=F?interval=1d&range=5d`),
-      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/GC=F?interval=1d&range=5d`),
-      fetchYahooJson(`${MARKET_ENDPOINTS.yahooChartBase}/RB=F?interval=1d&range=5d`),
-      fetchYahooJson(yahooSparkUrl(Object.values(YAHOO_COMMODITY_SYMBOLS)))
-    ]);
+    ] = settledAll;
 
-    const fx = fxRes.status === 'fulfilled' ? fxRes.value : null;
-    const usdPkr = fx?.rates?.PKR ?? 278.99;
+    const snapshotChartResults = settledAll.slice(SNAPSHOT_BASE_LEN);
 
-    // Equities: PSX API first (with referer headers), Yahoo KSE fallback, then null (no fake hardcoded value)
+    const usdPkr = resolveUsdPkr(fxRes, fxFallbackRes);
+
+    // Equities: PSX official indices page (HTML), Yahoo ^KSE chart fallback for KSE-100 only
     let equities = { kse100: null, kse30: null, allshr: null };
     if (psxIndRes.status === 'fulfilled' && psxIndRes.value) {
-      const psxData = parseIndices(psxIndRes.value);
-      if (psxData) equities = psxData;
+      const fromHtml = parsePsxIndicesFromHtml(psxIndRes.value);
+      if (fromHtml) equities = fromHtml;
+      else {
+        try {
+          const asJson = JSON.parse(psxIndRes.value);
+          const psxData = parseIndices(Array.isArray(asJson) ? asJson : null);
+          if (psxData) equities = psxData;
+        } catch (_) { /* page is HTML */ }
+      }
     }
     if (!equities.kse100 && yahooKseRes.status === 'fulfilled') {
       const yData = parseYahooKse(yahooKseRes.value);
@@ -457,11 +600,27 @@ module.exports = async function handler(req, res) {
 
     // Priority: Yahoo chart (query2) → Yahoo spark → Stooq daily → FRED (Brent only, recent only)
     const resolveCommodity = (yahooChart, yahooSpark, stooqVal, stooqAsOf, fredFallback = null) => {
-      if (yahooChart) return { value: yahooChart.value, asOf: yahooChart.asOf, source: 'yahoo_chart' };
-      if (yahooSpark)  return { value: yahooSpark.value,  asOf: yahooSpark.asOf,  source: 'yahoo_spark'  };
-      if (Number.isFinite(stooqVal)) return { value: stooqVal, asOf: stooqAsOf, source: 'stooq_daily' };
-      if (fredFallback && Number.isFinite(fredFallback.value)) return { value: fredFallback.value, asOf: fredFallback.asOf, source: 'fred_daily' };
-      return { value: null, asOf: null, source: 'unavailable' };
+      if (yahooChart) {
+        return {
+          value: yahooChart.value,
+          changePct: Number.isFinite(yahooChart.changePct) ? yahooChart.changePct : null,
+          asOf: yahooChart.asOf,
+          source: 'yahoo_chart'
+        };
+      }
+      if (yahooSpark) {
+        return {
+          value: yahooSpark.value,
+          changePct: Number.isFinite(yahooSpark.changePct) ? yahooSpark.changePct : null,
+          asOf: yahooSpark.asOf,
+          source: 'yahoo_spark'
+        };
+      }
+      if (Number.isFinite(stooqVal)) return { value: stooqVal, changePct: null, asOf: stooqAsOf, source: 'stooq_daily' };
+      if (fredFallback && Number.isFinite(fredFallback.value)) {
+        return { value: fredFallback.value, changePct: null, asOf: fredFallback.asOf, source: 'fred_daily' };
+      }
+      return { value: null, changePct: null, asOf: null, source: 'unavailable' };
     };
 
     const brent   = resolveCommodity(yahooChartBrent,    sparkBrent,    stooq.brent,       stooq.brentAsOf,       fredBrent);
@@ -480,25 +639,130 @@ module.exports = async function handler(req, res) {
       ? Math.round((Date.now() - new Date(commoditiesAsOf).getTime()) / 60000)
       : null;
     const commoditiesStale = commodityAgeMinutes === null ? true : commodityAgeMinutes > 180;
-    let performers = { 
-      gainers: [{ symbol: 'MTL', price: 1234.5, change: 12.5, changePct: 1.02 }, { symbol: 'AIRLINK', price: 98.2, change: 2.1, changePct: 2.18 }], 
-      losers: [{ symbol: 'EFERT', price: 156.4, change: -4.2, changePct: -2.62 }, { symbol: 'PPL', price: 112.5, change: -1.8, changePct: -15.7 }], 
-      active: [] 
-    };
+    let performers = { gainers: [], losers: [], active: [] };
     if (psxPerfRes.status === 'fulfilled' && psxPerfRes.value) {
       const perfData = parsePerformers(psxPerfRes.value);
       if (perfData) performers = perfData;
     }
 
-    let signals = [
-      { time: '11:15', symbol: 'LUCK', company: 'Lucky Cement', subject: 'Board Meeting Results: Interim Dividend Declared @ 50%' },
-      { time: '10:45', symbol: 'HBL', company: 'Habib Bank Ltd', subject: 'Material Information: Stake Acquisition in Foreign Subsidiary' },
-      { time: '09:20', symbol: 'ENGRO', company: 'Engro Corporation', subject: 'Corporate Briefing Session - Q4 2025' }
-    ];
+    let signals = [];
     if (psxAnncRes.status === 'fulfilled' && psxAnncRes.value) {
       const anncData = parseAnnouncements(psxAnncRes.value);
       if (anncData) signals = anncData;
     }
+
+    const snapQuotes = {};
+    SNAPSHOT_CHARTS.forEach((spec, i) => {
+      const r = snapshotChartResults[i];
+      snapQuotes[spec.key] = r.status === 'fulfilled' ? parseYahooCommodity(r.value) : null;
+    });
+
+    const GMS_PER_TROY_OZ = 31.1034768;
+    const GRAMS_PER_TOLA = 11.6638038;
+    const lngProxyVal = Number.isFinite(natGas.value) ? +(natGas.value * 3.6 * 0.85).toFixed(3) : null;
+    const lpgProxyVal = Number.isFinite(brent.value) ? +(brent.value * 0.012).toFixed(3) : null;
+
+    const mkSnapRow = (label, value, opts = {}) => ({
+      label,
+      value: value != null && Number.isFinite(value) ? value : null,
+      textValue: opts.textValue != null ? String(opts.textValue) : null,
+      changePct: opts.changePct != null && Number.isFinite(opts.changePct) ? opts.changePct : null,
+      prefix: opts.prefix || '',
+      suffix: opts.suffix || '',
+      hint: opts.hint || null,
+      reference: Boolean(opts.reference)
+    });
+
+    const eq = equities;
+    const eurQ = snapQuotes.eurUsd;
+    const silverQ = snapQuotes.silver;
+    const wtiQ = snapQuotes.wti;
+
+    const marketSnapshot = {
+      disclaimer:
+        'Live legs: PSX indices (official DPS page), USD/PKR (ER-API + currency-api fallback), Yahoo futures/FX/crypto. PKR marks are Brent/Gold/Silver futures × spot USD/PKR (implied). Reference rows are rounded public bands — not intraday.',
+      meta: {
+        commoditiesStale,
+        commoditiesAsOf,
+        commoditiesAgeMinutes: commodityAgeMinutes
+      },
+      panels: [
+        {
+          title: 'FX & PSX',
+          rows: [
+            mkSnapRow('USD/PKR', usdPkr),
+            mkSnapRow('EUR/USD', eurQ?.value, { changePct: eurQ?.changePct }),
+            mkSnapRow('KSE-100', eq.kse100?.value, { changePct: eq.kse100?.changePct }),
+            mkSnapRow('KSE-30', eq.kse30?.value, { changePct: eq.kse30?.changePct }),
+            mkSnapRow('All-Share', eq.allshr?.value, { changePct: eq.allshr?.changePct })
+          ]
+        },
+        {
+          title: 'PKR marks (implied)',
+          hint: 'USD leg from FX feed × last futures; gold/silver per gram; crude barrels.',
+          rows: [
+            mkSnapRow(
+              'Gold / gram PKR',
+              gold.value != null && usdPkr ? (gold.value * usdPkr) / GMS_PER_TROY_OZ : null
+            ),
+            mkSnapRow(
+              'Gold / tola PKR',
+              gold.value != null && usdPkr
+                ? (gold.value * usdPkr * GRAMS_PER_TOLA) / GMS_PER_TROY_OZ
+                : null
+            ),
+            mkSnapRow(
+              'Silver / gram PKR',
+              silverQ?.value != null && usdPkr ? (silverQ.value * usdPkr) / GMS_PER_TROY_OZ : null
+            ),
+            mkSnapRow('Brent / bbl PKR', brent.value != null && usdPkr ? brent.value * usdPkr : null),
+            mkSnapRow('WTI / bbl PKR', wtiQ?.value != null && usdPkr ? wtiQ.value * usdPkr : null)
+          ]
+        },
+        {
+          title: 'Crude & refined (USD)',
+          rows: [
+            mkSnapRow('Brent ICE', brent.value, { changePct: brent.changePct, prefix: '$', suffix: '/bbl' }),
+            mkSnapRow('WTI Nymex', wtiQ?.value, { changePct: wtiQ?.changePct, prefix: '$', suffix: '/bbl' }),
+            mkSnapRow('Henry Hub', natGas.value, { changePct: natGas.changePct, prefix: '$', suffix: '/MMBtu' }),
+            mkSnapRow('RBOB', gasoline.value, { changePct: gasoline.changePct, prefix: '$', suffix: '/gal' }),
+            mkSnapRow('LNG proxy', lngProxyVal, { prefix: '$' }),
+            mkSnapRow('LPG proxy', lpgProxyVal, { prefix: '$' })
+          ]
+        },
+        {
+          title: 'Precious metals (USD)',
+          rows: [
+            mkSnapRow('Gold', gold.value, { changePct: gold.changePct, prefix: '$', suffix: '/oz' }),
+            mkSnapRow('Silver', silverQ?.value, { changePct: silverQ?.changePct, prefix: '$', suffix: '/oz' }),
+            mkSnapRow('Platinum', snapQuotes.platinum?.value, { changePct: snapQuotes.platinum?.changePct, prefix: '$', suffix: '/oz' }),
+            mkSnapRow('Palladium', snapQuotes.palladium?.value, { changePct: snapQuotes.palladium?.changePct, prefix: '$', suffix: '/oz' })
+          ]
+        },
+        {
+          title: 'Industrial & crops',
+          rows: [
+            mkSnapRow('Copper', snapQuotes.copper?.value, { changePct: snapQuotes.copper?.changePct, prefix: '$', suffix: '/lb' }),
+            mkSnapRow('Corn', snapQuotes.corn?.value, { changePct: snapQuotes.corn?.changePct, suffix: ' ¢/bu' }),
+            mkSnapRow('Wheat', snapQuotes.wheat?.value, { changePct: snapQuotes.wheat?.changePct, suffix: ' ¢/bu' })
+          ]
+        },
+        {
+          title: 'Crypto (USD)',
+          rows: [
+            mkSnapRow('Bitcoin', snapQuotes.btc?.value, { changePct: snapQuotes.btc?.changePct, prefix: '$' }),
+            mkSnapRow('Ethereum', snapQuotes.eth?.value, { changePct: snapQuotes.eth?.changePct, prefix: '$' })
+          ]
+        },
+        {
+          title: 'Pakistan energy (reference)',
+          hint: 'Illustrative bands — verify against OGRA / company / survey data.',
+          rows: PAKISTAN_ENERGY_REFERENCE.map((r) =>
+            mkSnapRow(r.label, null, { textValue: r.value, hint: r.hint, reference: true })
+          )
+        }
+      ]
+    };
 
     const payload = {
       updatedAt: new Date().toISOString(),
@@ -516,16 +780,22 @@ module.exports = async function handler(req, res) {
         naturalGasUsdPerMmbtu: natGas.value,
         goldUsdPerOz: gold.value,
         gasolineUsdProxy: gasoline.value,
-        // LNG/LPG proxy — derived approximations from natGas & brent
-        lngProxy: Number.isFinite(natGas.value) ? +(natGas.value * 3.6 * 0.85).toFixed(3) : 11.25,
-        lpgProxy: Number.isFinite(brent.value) ? +(brent.value * 0.012).toFixed(3) : 1.12,
+        lngProxy: lngProxyVal != null ? lngProxyVal : 11.25,
+        lpgProxy: lpgProxyVal != null ? lpgProxyVal : 1.12,
+        sessionChangePct: {
+          brent: brent.changePct,
+          naturalGas: natGas.changePct,
+          gold: gold.changePct,
+          gasoline: gasoline.changePct
+        },
         sources: {
           brent: brent.source,
           naturalGas: natGas.source,
           gold: gold.source,
           gasoline: gasoline.source
         }
-      }
+      },
+      marketSnapshot
     };
 
     _marketCache = payload;

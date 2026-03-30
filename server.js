@@ -50,10 +50,14 @@ app.get('/', (_req, res) => {
 
 app.get('*', (_req, res) => res.redirect('/'));
 
-app.listen(port, () => {
-  console.log(`\n  brief.pk — Local Dev\n`);
-  console.log(`  Frontend:  http://localhost:${port}`);
-  console.log(`  API news:  http://localhost:${port}/api/news`);
-  console.log(`  API mkt:   http://localhost:${port}/api/market`);
-  console.log(`  Health:    http://localhost:${port}/api/health\n`);
-});
+module.exports = app;
+
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`\n  brief.pk — Local Dev\n`);
+    console.log(`  Frontend:  http://localhost:${port}`);
+    console.log(`  API news:  http://localhost:${port}/api/news`);
+    console.log(`  API mkt:   http://localhost:${port}/api/market`);
+    console.log(`  Health:    http://localhost:${port}/api/health\n`);
+  });
+}

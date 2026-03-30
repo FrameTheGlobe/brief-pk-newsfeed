@@ -1,17 +1,28 @@
 {
   "name": "brief-pk-newsfeed",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "private": true,
   "description": "brief.pk — Pakistan Intelligence Dashboard",
   "scripts": {
-    "dev":     "node server.js",
-    "start":   "node server.js",
-    "backend": "node backend/server.js"
+    "dev": "node server.js",
+    "start": "node server.js",
+    "backend": "node backend/server.js",
+    "build": "node scripts/verify-build.js && node scripts/bundle-vercel-analytics.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "ci": "npm run build && npm test",
+    "stamp": "node scripts/stamp-version.js",
+    "predeploy": "npm run stamp"
   },
   "dependencies": {
-    "cors":    "^2.8.6",
-    "dotenv":  "^16.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.0.0",
     "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "esbuild": "^0.25.0",
+    "supertest": "^7.1.4",
+    "vercel": "^48.6.0"
   },
   "engines": {
     "node": "20.x"

@@ -126,8 +126,12 @@ function computeRelevance(article, combinedText, hasDirectPakistanSignal) {
   if (article.category === 'Economy' || article.category === 'Security' || article.category === 'Governance') score += 2;
   if (article.category === 'Politics' || article.category === 'Markets' || article.category === 'Geopolitics') score += 1;
 
-  const ageHours = (Date.now() - new Date(article.publishedAt).getTime()) / 3_600_000;
-  if (Number.isFinite(ageHours)) {
+  let ageHours = NaN;
+  if (article.publishedAt) {
+    const t = new Date(article.publishedAt).getTime();
+    if (Number.isFinite(t)) ageHours = (Date.now() - t) / 3_600_000;
+  }
+  if (Number.isFinite(ageHours) && ageHours >= 0) {
     if (ageHours <= 6) score += 2;
     else if (ageHours <= 24) score += 1;
   }
@@ -227,7 +231,8 @@ function parseFeed(xml, feed) {
       directPakistanSignal: hasDirectPakistanSignal,
       category: getCategory(combined),
       priority: getPriority(combined),
-      publishedAt: publishedAt || new Date().toISOString()
+      // Never default to "now" — that falsely ranks undated items as newest.
+      publishedAt: publishedAt || null
     };
 
     article.relevanceScore = computeRelevance(article, combined, hasDirectPakistanSignal);
@@ -240,7 +245,7 @@ function parseFeed(xml, feed) {
   return out;
 }
 
-async function fetchText(url, timeoutMs = 9000) {
+async function fetchText(url, timeoutMs = 6500) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -260,7 +265,7 @@ async function fetchText(url, timeoutMs = 9000) {
 // ── Server-side in-memory cache ──────────────────────────────────────────────
 let _newsCache = null;
 let _newsCacheTs = 0;
-const NEWS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const NEWS_CACHE_TTL = 90 * 1000; // 90s — fresher headlines; still amortizes RSS fan-out
 
 async function buildArticles() {
   const responses = await Promise.allSettled(
@@ -283,25 +288,35 @@ async function buildArticles() {
     const scoreDiff = (article.relevanceScore || 0) - (existing.relevanceScore || 0);
     if (scoreDiff > 0) { dedup.set(key, article); continue; }
     if (scoreDiff === 0) {
-      if (new Date(article.publishedAt).getTime() > new Date(existing.publishedAt).getTime()) {
-        dedup.set(key, article);
-      }
+      const tNew = article.publishedAt ? new Date(article.publishedAt).getTime() : 0;
+      const tOld = existing.publishedAt ? new Date(existing.publishedAt).getTime() : 0;
+      const aOk = Number.isFinite(tNew);
+      const bOk = Number.isFinite(tOld);
+      if (aOk && bOk && tNew > tOld) dedup.set(key, article);
+      else if (aOk && !bOk) dedup.set(key, article);
     }
   }
 
+  const pubMs = (a) => {
+    if (!a.publishedAt) return 0;
+    const t = new Date(a.publishedAt).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+  const pri = (p) => (p === 'high' ? 3 : p === 'medium' ? 2 : 1);
+
+  // Newest first (primary), then relevance, then priority — keeps the feed time-accurate.
   return [...dedup.values()].sort((a, b) => {
+    const byTime = pubMs(b) - pubMs(a);
+    if (byTime !== 0) return byTime;
     const byRelevance = (b.relevanceScore || 0) - (a.relevanceScore || 0);
     if (byRelevance !== 0) return byRelevance;
-    const byPriority = (p) => (p === 'high' ? 3 : p === 'medium' ? 2 : 1);
-    const byPriorityDelta = byPriority(b.priority) - byPriority(a.priority);
-    if (byPriorityDelta !== 0) return byPriorityDelta;
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    return pri(b.priority) - pri(a.priority);
   });
 }
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
 
   const force = req.query?.force === '1';
 
