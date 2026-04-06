@@ -1209,6 +1209,61 @@ body {
   overflow: hidden;
 }
 
+.kse-local-card {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(15, 87, 136, 0.06), rgba(15, 87, 136, 0.015));
+}
+
+.kse-local-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kse-local-title {
+  font-family: var(--mono-font);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-navy);
+}
+
+.kse-local-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.kse-local-value {
+  align-self: end;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.kse-local-change {
+  margin-top: 8px;
+  font-family: var(--mono-font);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kse-local-change.up { color: var(--up); }
+.kse-local-change.down { color: var(--down); }
+.kse-local-change.flat { color: var(--text-muted); }
+
+.kse-local-foot {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* Main Lane */
 .interactive-tv-grid {
   display: grid;

@@ -886,10 +886,34 @@ function renderFooter(news) {
   footerSourceEl.textContent = formatted;
 }
 
+function renderKseCard() {
+  const valueEl = document.getElementById('kseCardValue');
+  const changeEl = document.getElementById('kseCardChange');
+  if (!valueEl || !changeEl) return;
+
+  const kse = state.market?.equities?.kse100;
+  if (!Number.isFinite(kse?.value)) {
+    valueEl.textContent = '--';
+    changeEl.className = 'kse-local-change flat';
+    changeEl.textContent = 'Live index unavailable';
+    return;
+  }
+
+  const pct = Number(kse.changePct);
+  const isPct = Number.isFinite(pct);
+  const cls = isPct ? (pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat') : 'flat';
+  const sign = isPct && pct > 0 ? '+' : '';
+
+  valueEl.textContent = fmtNum(kse.value, 0);
+  changeEl.className = `kse-local-change ${cls}`;
+  changeEl.textContent = isPct ? `${sign}${pct.toFixed(2)}%` : '--';
+}
+
 // ── renderAll ──────────────────────────────────────────────────────────────
 
 function renderAll() {
   const items = filteredNews();
+  renderKseCard();
   renderMarketTicker();
   renderFlashTicker(items);
   renderHeaderSignals(items);

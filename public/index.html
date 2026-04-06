@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/main.css?v=5.0.3" />
+  <link rel="stylesheet" href="/css/main.css?v=5.0.5" />
 </head>
 <body>
   <div class="page-bg"></div>
@@ -109,11 +109,14 @@
 
   <!-- ═══ TV CHART STRIP ════════════════════════════════════════ -->
   <section class="tv-charts-strip">
-    <div class="tv-widget-card">
-      <div class="tradingview-widget-container">
-        <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"PSX:KSE100","width":"100%","height":"100%","locale":"en","dateRange":"1M","colorTheme":"light","isTransparent":true,"autosize":true,"show_popup_button":false}</script>
+    <div class="tv-widget-card kse-local-card" id="kseCard">
+      <div class="kse-local-head">
+        <span class="kse-local-title">KSE-100</span>
+        <span class="kse-local-sub">Pakistan Stock Exchange</span>
       </div>
+      <div class="kse-local-value" id="kseCardValue">--</div>
+      <div class="kse-local-change" id="kseCardChange">--</div>
+      <div class="kse-local-foot">Source: PSX DPS feed</div>
     </div>
     <div class="tv-widget-card">
       <div class="tradingview-widget-container">
@@ -355,7 +358,7 @@
     </div>
   </footer>
 
-  <script src="/js/app.js?v=5.0.3" defer></script>
+  <script src="/js/app.js?v=5.0.5" defer></script>
   <!-- Built by `npm run build` from @vercel/analytics (static sites; see scripts/bundle-vercel-analytics.js) -->
   <script src="/js/va-analytics.js?v=5.0.3" defer></script>
   <!-- On Vercel-hosted preview, edge may also inject /_vercel/insights — harmless if unused -->
