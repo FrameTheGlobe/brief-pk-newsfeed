@@ -353,7 +353,7 @@ function renderMarketTicker() {
   }
 
   chips.push(`<span class="ticker-chip">Brent <strong>$${fmtNum(c.brentUsdPerBbl, 2)}</strong></span>`);
-  chips.push(`<span class="ticker-chip">Nat Gas <strong>$${fmtNum(c.naturalGasUsdPerMmbtu, 3)}</strong></span>`);
+  chips.push(`<span class="ticker-chip">US gas (HH) <strong>$${fmtNum(c.naturalGasUsdPerMmbtu, 3)}</strong></span>`);
   chips.push(`<span class="ticker-chip">Gold <strong>$${fmtNum(c.goldUsdPerOz, 2)}</strong></span>`);
   chips.push(`<span class="ticker-chip">LNG Proxy <strong>$${fmtNum(c.lngProxy, 3)}</strong></span>`);
   chips.push(`<span class="ticker-chip">LPG Proxy <strong>$${fmtNum(c.lpgProxy, 3)}</strong></span>`);

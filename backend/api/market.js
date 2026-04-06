@@ -33,18 +33,23 @@ const STOOQ_SYMBOLS = {
   gasoline: 'rb.f'
 };
 
-/** Extra Yahoo chart symbols for the expanded market snapshot (no API keys). */
+/**
+ * Extra Yahoo chart symbols for the market snapshot (no API keys).
+ * Curated for Pakistan: remittance FX, edible oils / grains / sugar / cotton (import & textile chain),
+ * plus silver/copper as industrial / jewellery context. Intentionally omits US-centric DXY, US-only
+ * platinum/palladium, and crypto — not primary for a PK staples dashboard.
+ */
 const SNAPSHOT_CHARTS = [
   { key: 'silver', symbol: 'SI=F', label: 'Silver', prefix: '$', suffix: '/oz' },
-  { key: 'wti', symbol: 'CL=F', label: 'WTI crude', prefix: '$', suffix: '/bbl' },
-  { key: 'platinum', symbol: 'PL=F', label: 'Platinum', prefix: '$', suffix: '/oz' },
-  { key: 'palladium', symbol: 'PA=F', label: 'Palladium', prefix: '$', suffix: '/oz' },
+  { key: 'sugar', symbol: 'SB=F', label: 'Sugar #11', prefix: '¢', suffix: '/lb' },
+  { key: 'cotton', symbol: 'CT=F', label: 'Cotton', prefix: '¢', suffix: '/lb' },
+  { key: 'wheat', symbol: 'ZW=F', label: 'Wheat (CBOT)', prefix: '', suffix: '¢/bu' },
+  { key: 'rice', symbol: 'ZR=F', label: 'Rough rice', prefix: '', suffix: '¢/cwt' },
+  { key: 'soybean', symbol: 'ZS=F', label: 'Soybeans', prefix: '', suffix: '¢/bu' },
+  { key: 'soyOil', symbol: 'ZL=F', label: 'Soybean oil', prefix: '¢', suffix: '/lb' },
   { key: 'copper', symbol: 'HG=F', label: 'Copper', prefix: '$', suffix: '/lb' },
-  { key: 'corn', symbol: 'ZC=F', label: 'Corn', prefix: '', suffix: '¢/bu' },
-  { key: 'wheat', symbol: 'ZW=F', label: 'Wheat', prefix: '', suffix: '¢/bu' },
-  { key: 'btc', symbol: 'BTC-USD', label: 'Bitcoin', prefix: '$', suffix: '' },
-  { key: 'eth', symbol: 'ETH-USD', label: 'Ethereum', prefix: '$', suffix: '' },
-  { key: 'eurUsd', symbol: 'EURUSD=X', label: 'EUR/USD', prefix: '', suffix: '' }
+  { key: 'gbpPkr', symbol: 'GBPPKR=X', label: 'GBP/PKR', prefix: '', suffix: '' },
+  { key: 'sarPkr', symbol: 'SARPKR=X', label: 'SAR/PKR', prefix: '', suffix: '' }
 ];
 
 /**
@@ -674,13 +679,13 @@ module.exports = async function handler(req, res) {
     });
 
     const eq = equities;
-    const eurQ = snapQuotes.eurUsd;
     const silverQ = snapQuotes.silver;
-    const wtiQ = snapQuotes.wti;
+    const gbpPkrQ = snapQuotes.gbpPkr;
+    const sarPkrQ = snapQuotes.sarPkr;
 
     const marketSnapshot = {
       disclaimer:
-        'Live legs: PSX indices (official DPS page), USD/PKR (ER-API + currency-api fallback), Yahoo futures/FX/crypto. PKR marks are Brent/Gold/Silver futures × spot USD/PKR (implied). Reference rows are rounded public bands — not intraday.',
+        'Pakistan-focused board: PSX (DPS), USD/PKR (ER-API + fallback), GBP/SAR vs PKR (Yahoo FX), Brent/RBOB/US gas + ICE/CBOT softs (Yahoo). PKR gold/silver/Brent = futures × spot USD/PKR (implied landed cost, not SBP/OGRA fix). Mandi/utility tariffs are not quoted here.',
       meta: {
         commoditiesStale,
         commoditiesAsOf,
@@ -688,10 +693,12 @@ module.exports = async function handler(req, res) {
       },
       panels: [
         {
-          title: 'FX & PSX',
+          title: 'FX, remittance & PSX',
+          hint: 'GBP/SAR vs PKR from Yahoo (wholesale FX); PSX indices from DPS.',
           rows: [
             mkSnapRow('USD/PKR', usdPkr),
-            mkSnapRow('EUR/USD', eurQ?.value, { changePct: eurQ?.changePct }),
+            mkSnapRow('GBP/PKR', gbpPkrQ?.value, { changePct: gbpPkrQ?.changePct }),
+            mkSnapRow('SAR/PKR', sarPkrQ?.value, { changePct: sarPkrQ?.changePct }),
             mkSnapRow('KSE-100', eq.kse100?.value, { changePct: eq.kse100?.changePct }),
             mkSnapRow('KSE-30', eq.kse30?.value, { changePct: eq.kse30?.changePct }),
             mkSnapRow('All-Share', eq.allshr?.value, { changePct: eq.allshr?.changePct })
@@ -699,7 +706,7 @@ module.exports = async function handler(req, res) {
         },
         {
           title: 'PKR marks (implied)',
-          hint: 'USD leg from FX feed × last futures; gold/silver per gram; crude barrels.',
+          hint: 'USD leg from FX feed × last futures; gold/silver per gram; Brent barrel.',
           rows: [
             mkSnapRow(
               'Gold / gram PKR',
@@ -715,43 +722,47 @@ module.exports = async function handler(req, res) {
               'Silver / gram PKR',
               silverQ?.value != null && usdPkr ? (silverQ.value * usdPkr) / GMS_PER_TROY_OZ : null
             ),
-            mkSnapRow('Brent / bbl PKR', brent.value != null && usdPkr ? brent.value * usdPkr : null),
-            mkSnapRow('WTI / bbl PKR', wtiQ?.value != null && usdPkr ? wtiQ.value * usdPkr : null)
+            mkSnapRow('Brent / bbl PKR', brent.value != null && usdPkr ? brent.value * usdPkr : null)
           ]
         },
         {
-          title: 'Crude & refined (USD)',
+          title: 'Energy imports (USD)',
+          hint: 'Brent + RBOB shape fuel import bill; US Henry Hub is a rough LNG cost proxy only.',
           rows: [
             mkSnapRow('Brent ICE', brent.value, { changePct: brent.changePct, prefix: '$', suffix: '/bbl' }),
-            mkSnapRow('WTI Nymex', wtiQ?.value, { changePct: wtiQ?.changePct, prefix: '$', suffix: '/bbl' }),
-            mkSnapRow('Henry Hub', natGas.value, { changePct: natGas.changePct, prefix: '$', suffix: '/MMBtu' }),
-            mkSnapRow('RBOB', gasoline.value, { changePct: gasoline.changePct, prefix: '$', suffix: '/gal' }),
-            mkSnapRow('LNG proxy', lngProxyVal, { prefix: '$' }),
-            mkSnapRow('LPG proxy', lpgProxyVal, { prefix: '$' })
+            mkSnapRow('RBOB (gasoline)', gasoline.value, { changePct: gasoline.changePct, prefix: '$', suffix: '/gal' }),
+            mkSnapRow(
+              'US Henry Hub',
+              natGas.value,
+              {
+                changePct: natGas.changePct,
+                prefix: '$',
+                suffix: '/MMBtu',
+                hint: 'US benchmark; Pakistan LNG pricing follows Asian spot / term structures'
+              }
+            ),
+            mkSnapRow('LNG proxy', lngProxyVal, { prefix: '$', hint: 'Derived from HH — indicative only' }),
+            mkSnapRow('LPG proxy', lpgProxyVal, { prefix: '$', hint: 'Rough Brent-linked proxy' })
           ]
         },
         {
-          title: 'Precious metals (USD)',
+          title: 'Gold & silver (USD)',
           rows: [
             mkSnapRow('Gold', gold.value, { changePct: gold.changePct, prefix: '$', suffix: '/oz' }),
-            mkSnapRow('Silver', silverQ?.value, { changePct: silverQ?.changePct, prefix: '$', suffix: '/oz' }),
-            mkSnapRow('Platinum', snapQuotes.platinum?.value, { changePct: snapQuotes.platinum?.changePct, prefix: '$', suffix: '/oz' }),
-            mkSnapRow('Palladium', snapQuotes.palladium?.value, { changePct: snapQuotes.palladium?.changePct, prefix: '$', suffix: '/oz' })
+            mkSnapRow('Silver', silverQ?.value, { changePct: silverQ?.changePct, prefix: '$', suffix: '/oz' })
           ]
         },
         {
-          title: 'Industrial & crops',
+          title: 'Staples & textile inputs',
+          hint: 'ICE/CBOT/NYMEX — import parity & textile chain context, not local mandi rates.',
           rows: [
-            mkSnapRow('Copper', snapQuotes.copper?.value, { changePct: snapQuotes.copper?.changePct, prefix: '$', suffix: '/lb' }),
-            mkSnapRow('Corn', snapQuotes.corn?.value, { changePct: snapQuotes.corn?.changePct, suffix: ' ¢/bu' }),
-            mkSnapRow('Wheat', snapQuotes.wheat?.value, { changePct: snapQuotes.wheat?.changePct, suffix: ' ¢/bu' })
-          ]
-        },
-        {
-          title: 'Crypto (USD)',
-          rows: [
-            mkSnapRow('Bitcoin', snapQuotes.btc?.value, { changePct: snapQuotes.btc?.changePct, prefix: '$' }),
-            mkSnapRow('Ethereum', snapQuotes.eth?.value, { changePct: snapQuotes.eth?.changePct, prefix: '$' })
+            mkSnapRow('Sugar #11', snapQuotes.sugar?.value, { changePct: snapQuotes.sugar?.changePct, prefix: '¢', suffix: '/lb' }),
+            mkSnapRow('Cotton', snapQuotes.cotton?.value, { changePct: snapQuotes.cotton?.changePct, prefix: '¢', suffix: '/lb' }),
+            mkSnapRow('Wheat (CBOT)', snapQuotes.wheat?.value, { changePct: snapQuotes.wheat?.changePct, suffix: ' ¢/bu' }),
+            mkSnapRow('Rough rice', snapQuotes.rice?.value, { changePct: snapQuotes.rice?.changePct, suffix: ' ¢/cwt' }),
+            mkSnapRow('Soybeans', snapQuotes.soybean?.value, { changePct: snapQuotes.soybean?.changePct, suffix: ' ¢/bu' }),
+            mkSnapRow('Soybean oil', snapQuotes.soyOil?.value, { changePct: snapQuotes.soyOil?.changePct, prefix: '¢', suffix: '/lb' }),
+            mkSnapRow('Copper', snapQuotes.copper?.value, { changePct: snapQuotes.copper?.changePct, prefix: '$', suffix: '/lb' })
           ]
         },
         {
