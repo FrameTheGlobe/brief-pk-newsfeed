@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="brief.pk — Pakistan Intelligence Dashboard. Live news, markets, Pakistan Nerve Center." />
+  <meta name="description" content="brief.pk — Pakistan Intelligence Dashboard. Live news, markets, and city-level telemetry." />
   <meta property="og:title" content="brief.pk | Pakistan Intelligence Dashboard" />
-  <meta property="og:description" content="Live Pakistan news intelligence: politics, economy, security, markets, and the Pakistan Nerve Center." />
+  <meta property="og:description" content="Live Pakistan news intelligence: politics, economy, security, markets, and city telemetry." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://briefpknews.xyz" />
   <meta name="twitter:card" content="summary" />
@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/main.css?v=5.0.0" />
+  <link rel="stylesheet" href="/css/main.css?v=5.0.3" />
 </head>
 <body>
   <div class="page-bg"></div>
@@ -74,6 +74,17 @@
     </div>
   </header>
 
+  <!-- ═══ FEED LOAD (real progress: each API round-trip bumps the bar) ═══ -->
+  <div id="feedLoadBar" class="feed-load-bar" hidden role="status" aria-live="polite" aria-busy="false">
+    <div class="feed-load-track" role="progressbar" id="feedLoadProgress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Data feeds loading progress">
+      <div class="feed-load-fill" id="feedLoadFill" style="width:0%"></div>
+    </div>
+    <div class="feed-load-meta">
+      <span class="feed-load-pct" id="feedLoadPct">0%</span>
+      <span class="feed-load-steps" id="feedLoadSteps">Preparing…</span>
+    </div>
+  </div>
+
   <!-- ═══ TICKERS ═══════════════════════════════════════════════ -->
   <section class="ticker-stack">
     <section class="market-ticker-wrap">
@@ -101,7 +112,7 @@
     <div class="tv-widget-card">
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"CAPITALCOM:DXY","width":"100%","height":"100%","locale":"en","dateRange":"1M","colorTheme":"light","isTransparent":true,"autosize":true,"show_popup_button":false}</script>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"PSX:KSE100","width":"100%","height":"100%","locale":"en","dateRange":"1M","colorTheme":"light","isTransparent":true,"autosize":true,"show_popup_button":false}</script>
       </div>
     </div>
     <div class="tv-widget-card">
@@ -158,21 +169,6 @@
         </label>
         <div class="focus-count" id="focusCountBadge"></div>
         <div id="pulseBoard" class="pulse-board"></div>
-      </div>
-
-      <!-- Narrative Map -->
-      <div class="rail-block">
-        <div class="rail-label">Narrative Map</div>
-        <div id="narrativeMap" class="narrative-map"></div>
-      </div>
-
-      <!-- Categories (now interactive) -->
-      <div class="rail-block">
-        <div class="rail-label-row">
-          <span class="rail-label">Categories</span>
-          <button class="clear-filter-btn" id="clearCategoryBtn" style="display:none">✕ Clear</button>
-        </div>
-        <ul class="nav-list" id="categoryNav"></ul>
       </div>
 
       <!-- Sources (now interactive) -->
@@ -290,17 +286,21 @@
     <!-- ── RIGHT RAIL ─────────────────────────────────────────── -->
     <aside class="right-rail">
 
-      <!-- Pakistan Nerve Center -->
-      <div class="rail-widget">
-        <div class="widget-head">Pakistan Nerve Center<span class="lane-head-badge">Beta</span></div>
+      <!-- Pakistan Telemetry (open-data city board — replaces decorative map) -->
+      <div class="rail-widget pk-tel-widget">
+        <div class="widget-head">Pakistan Telemetry<span class="lane-head-badge">Open data</span></div>
+        <p class="pk-tel-tagline">Weather, AQI, crop stress, and airspace load by city — sort by layer.</p>
         <div class="pk-map-head">
-          <button class="pk-layer-btn active" data-layer="weather">Weather</button>
-          <button class="pk-layer-btn" data-layer="aqi">AQI</button>
-          <button class="pk-layer-btn" data-layer="agri">Agri</button>
-          <button class="pk-layer-btn" data-layer="flights">Flights</button>
+          <button type="button" class="pk-layer-btn active" data-layer="weather">Weather</button>
+          <button type="button" class="pk-layer-btn" data-layer="aqi">AQI</button>
+          <button type="button" class="pk-layer-btn" data-layer="agri">Agri</button>
+          <button type="button" class="pk-layer-btn" data-layer="flights">Flights</button>
         </div>
-        <div id="pkMapCanvas" class="pk-map-canvas"></div>
-        <div id="pkMapHotspots" class="pk-map-hotspots"></div>
+        <div id="pkTelKpis" class="pk-tel-kpis" aria-label="National averages"></div>
+        <div class="pk-tel-scroll">
+          <div id="pkMapCanvas" class="pk-map-canvas pk-tel-table-host"></div>
+          <div id="pkMapHotspots" class="pk-map-hotspots pk-tel-context"></div>
+        </div>
       </div>
 
       <!-- PSX Performers (new) -->
@@ -314,40 +314,10 @@
         <div id="psxPerformers" class="psx-performers"></div>
       </div>
 
-      <!-- Trend Radar -->
-      <div class="rail-widget">
-        <div class="widget-head">Trend Radar</div>
-        <ul id="trendRadar" class="widget-list"></ul>
-      </div>
-
-      <!-- Source Dominance -->
-      <div class="rail-widget">
-        <div class="widget-head">Source Dominance</div>
-        <div id="sourceDominance" class="source-dominance"></div>
-      </div>
-
-      <!-- Market Snapshot -->
-      <div class="rail-widget">
+      <!-- Market Snapshot (multi-panel: PK marks, energy, metals, crypto, reference) -->
+      <div class="rail-widget mkt-snapshot-widget">
         <div class="widget-head">Market Snapshot<span class="lane-head-badge">Live</span></div>
         <div id="marketSnapshot" class="market-snapshot"></div>
-      </div>
-
-      <!-- Live Feed -->
-      <div class="rail-widget">
-        <div class="widget-head">Live Feed</div>
-        <ul id="liveFeed" class="live-feed"></ul>
-      </div>
-
-      <!-- Category Activity -->
-      <div class="rail-widget">
-        <div class="widget-head">Category Activity</div>
-        <div id="categoryActivity" class="category-activity"></div>
-      </div>
-
-      <!-- Trending Keywords -->
-      <div class="rail-widget">
-        <div class="widget-head">Trending Keywords</div>
-        <div id="keywordSignals" class="keyword-pills"></div>
       </div>
 
     </aside>
@@ -379,14 +349,15 @@
           <span class="src-title">Aggregated Intelligence:</span> <span id="footerSourceList">Dawn · Geo · ARY · Express Tribune · Business Recorder · Al Jazeera · BBC · Reuters</span>
         </div>
         <div class="footer-note">
-          Data synchronizes every 4m. Live markets via Yahoo Finance, Stooq, FRED. Telemetry via Open-Meteo & PSX API.
+          Main bundle refreshes about every 90s (RSS cache on the server is ~90s). Live markets via Yahoo Finance, Stooq, FRED. Telemetry via Open-Meteo & PSX API.
         </div>
       </div>
     </div>
   </footer>
 
-  <script src="/js/app.js?v=5.0.0" defer></script>
-  <!-- Vercel Analytics — served automatically by Vercel edge; no-op on localhost -->
-  <script defer src="/_vercel/insights/script.js"></script>
+  <script src="/js/app.js?v=5.0.3" defer></script>
+  <!-- Built by `npm run build` from @vercel/analytics (static sites; see scripts/bundle-vercel-analytics.js) -->
+  <script src="/js/va-analytics.js?v=5.0.3" defer></script>
+  <!-- On Vercel-hosted preview, edge may also inject /_vercel/insights — harmless if unused -->
 </body>
 </html>
