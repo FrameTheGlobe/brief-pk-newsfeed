@@ -348,9 +348,10 @@ function parsePsxIndicesFromHtml(html) {
   let tm;
   while ((tm = trRe.exec(tbody)) !== null) {
     const tr = tm[1];
-    const dc = tr.match(/data-code="([^"]+)"/i);
+    const dc = tr.match(/data-code=["']([^"']+)["']/i);
     if (!dc) continue;
-    const orders = [...tr.matchAll(/<td class="right"[^>]*data-order="([^"]+)"/gi)].map((m) => parseFloat(m[1]));
+    // PSX markup varies; don't depend on exact class names.
+    const orders = [...tr.matchAll(/<td[^>]*data-order=["']([^"']+)["'][^>]*>/gi)].map((m) => parseFloat(m[1]));
     if (orders.length < 5) continue;
     const [, , current, change, changePct] = orders;
     if (!Number.isFinite(current)) continue;
@@ -556,6 +557,14 @@ module.exports = async function handler(req, res) {
     if (!equities.kse100 && yahooKseRes.status === 'fulfilled') {
       const yData = parseYahooKse(yahooKseRes.value);
       if (yData) equities.kse100 = yData;
+    }
+    // Always keep last known PSX snapshot so card doesn't go blank outside sessions
+    // or during upstream/layout hiccups.
+    const prevEq = _marketCache?.equities || null;
+    if (prevEq) {
+      if (!equities.kse100 && Number.isFinite(prevEq.kse100?.value)) equities.kse100 = prevEq.kse100;
+      if (!equities.kse30 && Number.isFinite(prevEq.kse30?.value)) equities.kse30 = prevEq.kse30;
+      if (!equities.allshr && Number.isFinite(prevEq.allshr?.value)) equities.allshr = prevEq.allshr;
     }
 
     const readStooq = (result) => {
