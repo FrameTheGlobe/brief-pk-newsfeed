@@ -463,6 +463,8 @@ function renderBreaking(items) {
 
   el.innerHTML = rows
     .map((n, idx) => {
+      const relScore = n.relevanceScore || 0;
+      const relClass = relScore >= 12 ? 'rel-critical' : relScore >= 8 ? 'rel-high' : 'rel-normal';
       return `
         <a class="breaking-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer" data-priority="${escapeHtml(n.priority)}">
           <div class="breaking-rank">${String(idx + 1).padStart(2, '0')}</div>
@@ -470,7 +472,7 @@ function renderBreaking(items) {
             <div class="breaking-title">${escapeHtml(n.title)}</div>
             <div class="badges">
               <span class="badge ${escapeHtml(n.priority)}">${escapeHtml(n.priority)}</span>
-              <span class="badge">${escapeHtml(n.scope)}</span>
+              <span class="badge rel-badge ${relClass}">${relScore} INTEL</span>
               <span class="badge">${escapeHtml(n.category)}</span>
               <span class="badge">${escapeHtml(n.source)}</span>
             </div>
