@@ -21,8 +21,67 @@ const state = {
   popPeriod: 'today',
   mapLayer: 'weather',
   activeSource: null,
-  searchQuery: ''
+  searchQuery: '',
+  lastMarketPulse: null
 };
+
+/** Narrative Clustering Engine: Groups similar headlines into tactical threads */
+function clusterNews(articles) {
+  const clusters = [];
+  const handled = new Set();
+  
+  for (let i = 0; i < articles.length; i++) {
+    if (handled.has(i)) continue;
+    const core = articles[i];
+    const group = [core];
+    handled.add(i);
+    
+    for (let j = i + 1; j < articles.length; j++) {
+      if (handled.has(j)) continue;
+      const compare = articles[j];
+      
+      // Fuzzy match based on shared long-words
+      const w1 = core.title.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      const w2 = compare.title.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      const intersect = w1.filter(w => w2.includes(w));
+      
+      if (intersect.length >= 3) {
+        group.push(compare);
+        handled.add(j);
+      }
+    }
+    clusters.push({ primary: core, others: group.slice(1) });
+  }
+  return clusters;
+}
+
+/** Renders the top-level Digital Dossier (3 Tactical Bullets) */
+function renderFlashDossier(articles) {
+  const container = document.getElementById('flashDossierContainer');
+  if (!container) return;
+
+  const highlights = articles.filter(a => a.priority === 'high').slice(0, 3);
+  if (!highlights.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="flash-dossier-widget">
+      <div class="dossier-header">
+        <span class="dossier-title">Digital Dossier</span>
+        <div class="dossier-btn-group">
+          <button class="dossier-btn" onclick="window.print()">⇩ PDF Export</button>
+          <button class="dossier-btn" onclick="window.location.reload()">↺ Refresh Scan</button>
+        </div>
+      </div>
+      <div class="dossier-bullets">
+        ${highlights.map(h => `<div class="dossier-bullet">${escapeHtml(h.title)}</div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 
@@ -383,9 +442,16 @@ function renderFlashTicker(items) {
     return;
   }
 
-  const html = items
-    .slice(0, 30)
-    .map((n) => `<a class="flash-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(n.title)}</a>`)
+  const clusters = clusterNews(items);
+  const html = clusters
+    .slice(0, 20)
+    .map((c) => {
+      const n = c.primary;
+      const count = c.others.length;
+      const pulse = n.priority === 'high' ? '<span class="pulse-alert"></span>' : '';
+      const threadHint = count > 0 ? `<span class="thread-hint"> [+${count} sources]</span>` : '';
+      return `<a class="flash-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">${pulse}${escapeHtml(n.title)}${threadHint}</a>`;
+    })
     .join('');
 
   el.innerHTML = html + html;
