@@ -3256,3 +3256,114 @@ body {
   .ai-indicators-row { grid-template-columns: repeat(2, 1fr); }
   .ai-intel-header  { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
+
+/* ═══ FLASH INTELLIGENCE OVERHAUL ════════════════════════ */
+
+.flash-dossier-widget {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--brand-blue);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dossier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dossier-title {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--brand-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.dossier-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.dossier-btn {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  font-size: 9px;
+  font-family: var(--mono-font);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dossier-btn:hover {
+  background: var(--brand-blue);
+  color: white;
+}
+
+.dossier-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dossier-bullet {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+.dossier-bullet::before {
+  content: '▶';
+  color: var(--brand-red);
+  font-size: 8px;
+  margin-top: 5px;
+}
+
+/* Narrative Threads */
+.flash-thread {
+  border-left: 2px solid var(--panel-border);
+  margin-left: 10px;
+  padding-left: 15px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.thread-more-trigger {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--brand-blue);
+  cursor: pointer;
+  text-decoration: underline;
+  margin-top: 4px;
+}
+
+/* Pulsing Alerts for Market Volatility */
+.pulse-alert {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--brand-red);
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
