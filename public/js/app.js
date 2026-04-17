@@ -1,5 +1,5 @@
-/** Poll often enough to stay near server news cache (~90s RSS TTL on Railway). */
-const REFRESH_MS = 90_000;
+/** Poll every 10 minutes to reduce Railway server costs. */
+const REFRESH_MS = 10 * 60 * 1000;
 
 // API base URL: empty on localhost (Express serves both static + API),
 // Railway URL on production (Vercel serves static only).
@@ -10,7 +10,7 @@ const BREAKING_LIMIT = 16;
 const CARD_LIMIT = 12;
 
 const CACHE_KEY = 'brief-pk-data-v2';
-const CACHE_TTL = 3 * 60 * 1000;
+const CACHE_TTL = 10 * 60 * 1000;
 
 const state = {
   updatedAt: null,
