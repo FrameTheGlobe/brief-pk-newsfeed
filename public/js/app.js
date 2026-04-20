@@ -680,19 +680,31 @@ function renderPopularNews() {
   }
   const items = (pool.length > 0 ? pool : state.news).slice(0, 8);
   el.innerHTML = items.map((n) => {
-    const src = n.source ? escapeHtml(n.source) : 'Source';
-    const thumb = n.thumbnail
-      ? `<img src="${escapeHtml(n.thumbnail)}" class="pop-img" alt="" loading="lazy" decoding="async" width="56" height="40" onerror="this.onerror=null;this.style.opacity='0'"/>`
-      : '<div class="pop-img pop-img--fallback" aria-hidden="true"></div>';
+    const srcName = (n.source || 'Source').trim();
+    const src = escapeHtml(srcName);
+    const initial = escapeHtml(srcName.charAt(0).toUpperCase() || '·');
+    const hue = popSourceHue(srcName);
+    const img = n.thumbnail
+      ? `<img src="${escapeHtml(n.thumbnail)}" class="pop-thumb-img" alt="" loading="lazy" decoding="async" width="64" height="48" onerror="this.onerror=null;this.style.display='none'"/>`
+      : '';
     return `
     <a href="${escapeHtml(n.url)}" class="pop-item" target="_blank" rel="noopener noreferrer">
-      <div class="pop-thumb">${thumb}</div>
+      <div class="pop-thumb" style="--pop-hue:${hue}">
+        <div class="pop-thumb-fallback" aria-hidden="true"><span class="pop-thumb-initial">${initial}</span></div>
+        ${img}
+      </div>
       <div class="pop-content">
         <div class="pop-title">${escapeHtml(n.title)}</div>
         <div class="pop-meta"><span class="pop-src">${src}</span><span class="pop-meta-sep" aria-hidden="true">·</span>${relTimeBadge(n.publishedAt)}</div>
       </div>
     </a>`;
   }).join('');
+}
+
+function popSourceHue(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return h % 360;
 }
 
 function renderMarketSnapshot() {
@@ -1507,7 +1519,12 @@ function pjtFormatAxisTick(v) {
   return (Math.round(v * 10) / 10).toFixed(1);
 }
 
-/** Turn bundled / AI text into readable HTML; strip dev-only npm line. */
+/**
+ * Turn bundled / AI text into readable HTML. Within a paragraph single newlines
+ * are treated as part of flowing text (joined with a space). Paragraphs are
+ * separated by blank lines. Bulleted blocks are rendered as <ul>. The
+ * dev-only `npm run update-macro` hint is moved into a collapsed details block.
+ */
 function pjtFormatInsightToHtml(raw) {
   let t = (raw || '').replace(/\s*To refresh numbers, run:\s*npm run update-macro\s*/gi, '').trim();
   if (!t) return '<p class="pjt-insight-p pjt-insight-p--muted">No analysis text yet.</p>';
@@ -1515,8 +1532,15 @@ function pjtFormatInsightToHtml(raw) {
   const body = paras
     .map((block) => {
       const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-      const inner = lines.map((line) => escapeHtml(line)).join('<br />');
-      return `<p class="pjt-insight-p">${inner}</p>`;
+      const bulletRe = /^(?:[-•*]|\u2013|\u2014)\s+/;
+      const allBullets = lines.length > 1 && lines.every((l) => bulletRe.test(l));
+      if (allBullets) {
+        const items = lines
+          .map((l) => `<li>${escapeHtml(l.replace(bulletRe, ''))}</li>`)
+          .join('');
+        return `<ul class="pjt-insight-ul">${items}</ul>`;
+      }
+      return `<p class="pjt-insight-p">${escapeHtml(lines.join(' '))}</p>`;
     })
     .join('');
   const dev =
@@ -1524,40 +1548,89 @@ function pjtFormatInsightToHtml(raw) {
   return body + dev;
 }
 
-/** One-line summary of newest WDI point per series (years differ by publication lag). */
-function pjtFillLatestStrip(macro) {
-  const el = document.getElementById('pjtLatestStrip');
-  if (!el) return;
-  const fromMeta = macro.meta?.latestObs;
-  const rows = Array.isArray(fromMeta)
-    ? fromMeta
-    : (macro.series || []).map((s) => {
-        const pts = s.points || [];
-        const last = pts.length ? pts[pts.length - 1] : null;
-        return {
-          shortLabel: s.shortLabel,
-          unit: s.unit,
-          year: last?.y,
-          value: last?.v
-        };
-      });
-  const parts = rows
-    .filter((o) => o != null && o.value != null && o.year != null)
-    .map((o) => {
-      const pct = o.unit === '%';
-      const v = typeof o.value === 'number' ? o.value.toFixed(1) : String(o.value);
-      return `${o.shortLabel || o.id} ${v}${pct ? '%' : ''} (${o.year})`;
-    });
-  if (!parts.length) {
-    el.hidden = true;
-    el.textContent = '';
-    return;
-  }
-  el.hidden = false;
-  el.textContent = `Latest in this dataset: ${parts.join(' · ')}`;
+function pjtFmtValue(v, unit) {
+  if (!Number.isFinite(v)) return '—';
+  const rounded = Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1);
+  return unit === '%' ? `${rounded}%` : rounded;
 }
 
-/** Stacked small multiples: each visible series uses real % scale + min/max labels on the right. */
+/** Tiny sparkline SVG for KPI cards. */
+function pjtRenderSparkline(points, color, W = 120, H = 28) {
+  const pts = (points || []).filter((p) => Number.isFinite(p.v));
+  if (!pts.length) return '';
+  const vs = pts.map((p) => p.v);
+  const lo = Math.min(...vs);
+  const hi = Math.max(...vs);
+  const spanY = Math.max(hi - lo, 1e-9);
+  const years = pts.map((p) => p.y);
+  const ymin = Math.min(...years);
+  const ymax = Math.max(...years);
+  const spanX = Math.max(ymax - ymin, 1);
+  const pad = 3;
+  const xScale = (y) => pad + ((y - ymin) / spanX) * (W - pad * 2);
+  const yScale = (v) => pad + (1 - (v - lo) / spanY) * (H - pad * 2);
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.y).toFixed(1)} ${yScale(p.v).toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  const lx = xScale(last.y).toFixed(1);
+  const ly = yScale(last.v).toFixed(1);
+  return `<svg class="pjt-spark-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${lx}" cy="${ly}" r="2.25" fill="${color}"/></svg>`;
+}
+
+/** Build the 4 KPI toggle cards (also replaces the former legend). */
+function pjtBuildKpis() {
+  const el = document.getElementById('pjtKpis');
+  if (!el || !_pjtMacro) return;
+  el.innerHTML = _pjtMacro.series
+    .map((s) => {
+      const pts = (s.points || []).filter((p) => Number.isFinite(p.v));
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const col = PJT_COLORS[s.id] || '#64748b';
+      const checked = _pjtVisible[s.id] !== false;
+      const latestVal = last ? pjtFmtValue(last.v, s.unit) : '—';
+      const latestYear = last ? last.y : '';
+      const deltaV = first && last ? last.v - first.v : null;
+      const dir = deltaV == null ? '' : deltaV > 0.05 ? 'up' : deltaV < -0.05 ? 'down' : 'flat';
+      const deltaArrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '■';
+      const deltaText =
+        deltaV == null
+          ? ''
+          : `${deltaV > 0 ? '+' : ''}${Math.abs(deltaV) >= 100 ? deltaV.toFixed(0) : deltaV.toFixed(1)}${s.unit === '%' ? 'pp' : ''} vs ${first.y}`;
+      const spark = pjtRenderSparkline(pts, col, 128, 30);
+      return `
+        <button type="button" class="pjt-kpi${checked ? ' is-active' : ''}" data-pjt-id="${escapeHtml(s.id)}" style="--pjt-accent:${col}" aria-pressed="${checked ? 'true' : 'false'}" title="Click to ${checked ? 'hide' : 'show'} this series in the chart below">
+          <span class="pjt-kpi-accent" aria-hidden="true"></span>
+          <div class="pjt-kpi-header">
+            <span class="pjt-kpi-label">${escapeHtml(s.shortLabel || s.id)}</span>
+            <span class="pjt-kpi-year">${latestYear}</span>
+          </div>
+          <div class="pjt-kpi-value"><span class="pjt-kpi-num">${latestVal}</span></div>
+          ${deltaText ? `<div class="pjt-kpi-delta pjt-kpi-delta--${dir}"><span class="pjt-kpi-arrow">${deltaArrow}</span>${deltaText}</div>` : ''}
+          <div class="pjt-kpi-spark">${spark}</div>
+        </button>
+      `;
+    })
+    .join('');
+  el.querySelectorAll('button.pjt-kpi').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.pjtId;
+      if (!id) return;
+      const next = !_pjtVisible[id];
+      _pjtVisible[id] = next;
+      btn.classList.toggle('is-active', next);
+      btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+      btn.setAttribute('title', `Click to ${next ? 'hide' : 'show'} this series in the chart below`);
+      pjtRenderSvgChart();
+    });
+  });
+}
+
+/**
+ * Stacked small multiples chart. Row labels live INSIDE each plot as colored
+ * pills at the top-left so the plot uses the full available width (no giant
+ * whitespace column on the left). Min / max / mid values are shown as tight
+ * axis ticks on the right.
+ */
 function pjtRenderSvgChart() {
   const svg = document.getElementById('pjtChart');
   const skel = document.getElementById('pjtChartSkel');
@@ -1568,12 +1641,13 @@ function pjtRenderSvgChart() {
   const x1 = Math.min(meta.range.to, new Date().getFullYear());
   const spanX = Math.max(x1 - x0, 1);
   const W = 720;
-  const padL = 92;
-  const padR = 58;
+  const padL = 10;
+  const padR = 44;
   const innerW = W - padL - padR;
-  const rowH = 58;
+  const rowH = 70;
+  const rowGap = 6;
   const topPad = 6;
-  const xAxisH = 28;
+  const xAxisH = 22;
   const visible = _pjtMacro.series.filter((s) => _pjtVisible[s.id]);
 
   const xScale = (yr) => padL + ((yr - x0) / spanX) * innerW;
@@ -1582,13 +1656,13 @@ function pjtRenderSvgChart() {
     const H = 96;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.setAttribute('aria-label', 'Macro charts: no series selected');
-    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" dominant-baseline="middle" fill="currentColor" fill-opacity="0.5" font-family="Inter,system-ui,sans-serif" font-size="13">Turn on at least one indicator below.</text>`;
+    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" dominant-baseline="middle" fill="currentColor" fill-opacity="0.55" font-family="Inter,system-ui,sans-serif" font-size="13">Tap a KPI card above to show it in the chart.</text>`;
     svg.setAttribute('class', 'pjt-chart pjt-chart--multiples');
     if (skel) skel.hidden = true;
     return;
   }
 
-  const plotStackH = visible.length * rowH;
+  const plotStackH = visible.length * rowH + (visible.length - 1) * rowGap;
   const plotBottom = topPad + plotStackH;
   const H = topPad + plotStackH + xAxisH;
 
@@ -1598,47 +1672,54 @@ function pjtRenderSvgChart() {
   for (; yr <= x1; yr += yearStep) {
     const gx = xScale(yr);
     parts.push(
-      `<line class="pjt-grid-v" x1="${gx}" y1="${topPad}" x2="${gx}" y2="${plotBottom}" stroke="currentColor" stroke-opacity="0.1" stroke-width="0.75"/>`
+      `<line class="pjt-grid-v" x1="${gx}" y1="${topPad}" x2="${gx}" y2="${plotBottom}" stroke="currentColor" stroke-opacity="0.08" stroke-width="0.75"/>`
     );
   }
 
   let rowIdx = 0;
   for (const s of visible) {
     const col = PJT_COLORS[s.id] || '#64748b';
-    const y0 = topPad + rowIdx * rowH;
-    const plotTop = y0 + 2;
-    const plotBot = y0 + rowH - 2;
-    const plotH = plotBot - plotTop;
+    const y0 = topPad + rowIdx * (rowH + rowGap);
+    const plotTop = y0;
+    const plotBot = y0 + rowH;
+    const plotH = rowH;
     const { min: vmin, max: vmax } = pjtYRange(s.points);
     const spanY = Math.max(vmax - vmin, 1e-9);
     const yScale = (v) => plotTop + ((vmax - v) / spanY) * plotH;
 
-    const zebra = rowIdx % 2 === 0 ? 0.02 : 0.035;
-    parts.push(`<rect x="0" y="${y0}" width="${W}" height="${rowH}" fill="currentColor" fill-opacity="${zebra}"/>`);
     parts.push(
-      `<rect x="${padL}" y="${plotTop}" width="${innerW}" height="${plotH}" fill="none" stroke="currentColor" stroke-opacity="0.16" rx="2"/>`
+      `<rect x="${padL}" y="${y0}" width="${innerW}" height="${rowH}" fill="${col}" fill-opacity="0.05" rx="6"/>`
+    );
+    parts.push(
+      `<rect x="${padL}" y="${y0}" width="${innerW}" height="${rowH}" fill="none" stroke="${col}" stroke-opacity="0.18" stroke-width="1" rx="6"/>`
     );
 
     const abb = PJT_ROW_ABBREV[s.id] || s.shortLabel;
+    const labelW = Math.max(38, abb.length * 7 + 16);
     parts.push(
-      `<text x="10" y="${(plotTop + plotBot) / 2}" dominant-baseline="middle" font-family="Inter,system-ui,sans-serif" font-size="12" font-weight="600" fill="currentColor" fill-opacity="0.92">${escapeHtml(abb)}</text>`
+      `<rect x="${padL + 8}" y="${y0 + 8}" width="${labelW}" height="18" rx="9" fill="${col}" fill-opacity="0.95"/>`
     );
-    const pctSuf = s.unit === '%' ? '%' : '';
     parts.push(
-      `<text x="${W - 8}" y="${plotTop + 12}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmax)}${escapeHtml(pctSuf)}</text>`
+      `<text x="${padL + 8 + labelW / 2}" y="${y0 + 17}" text-anchor="middle" dominant-baseline="middle" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" fill="#fff" letter-spacing="0.02em">${escapeHtml(abb.toUpperCase())}</text>`
+    );
+
+    const pctSuf = s.unit === '%' ? '%' : '';
+    const tickX = W - 6;
+    parts.push(
+      `<text x="${tickX}" y="${plotTop + 10}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmax)}${escapeHtml(pctSuf)}</text>`
     );
     const vmid = (vmin + vmax) / 2;
-    if (plotH >= 28 && Math.abs(vmid - vmin) > 1e-6 && Math.abs(vmax - vmid) > 1e-6) {
+    if (plotH >= 34 && Math.abs(vmid - vmin) > 1e-6 && Math.abs(vmax - vmid) > 1e-6) {
       const yMid = yScale(vmid);
       parts.push(
-        `<line class="pjt-grid-h" x1="${padL}" y1="${yMid}" x2="${padL + innerW}" y2="${yMid}" stroke="currentColor" stroke-opacity="0.08" stroke-dasharray="3 3" stroke-width="0.75"/>`
+        `<line x1="${padL + 4}" y1="${yMid}" x2="${padL + innerW - 4}" y2="${yMid}" stroke="currentColor" stroke-opacity="0.08" stroke-dasharray="2 4" stroke-width="0.75"/>`
       );
       parts.push(
-        `<text x="${W - 8}" y="${yMid}" dominant-baseline="middle" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.48">${pjtFormatAxisTick(vmid)}${escapeHtml(pctSuf)}</text>`
+        `<text x="${tickX}" y="${yMid}" dominant-baseline="middle" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.48">${pjtFormatAxisTick(vmid)}${escapeHtml(pctSuf)}</text>`
       );
     }
     parts.push(
-      `<text x="${W - 8}" y="${plotBot - 4}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmin)}${escapeHtml(pctSuf)}</text>`
+      `<text x="${tickX}" y="${plotBot - 5}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmin)}${escapeHtml(pctSuf)}</text>`
     );
 
     const pts = (s.points || []).filter((p) => Number.isFinite(p.v));
@@ -1663,12 +1744,19 @@ function pjtRenderSvgChart() {
         }
       } else {
         const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.y)} ${yScale(p.v)}`).join(' ');
+        const areaD =
+          `M ${xScale(pts[0].y)} ${plotBot} ` +
+          pts.map((p) => `L ${xScale(p.y)} ${yScale(p.v)}`).join(' ') +
+          ` L ${xScale(pts[pts.length - 1].y)} ${plotBot} Z`;
+        parts.push(
+          `<path class="pjt-area" fill="${col}" fill-opacity="0.1" stroke="none" d="${areaD}"/>`
+        );
         parts.push(
           `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" d="${d}"/>`
         );
         const lp = pts[pts.length - 1];
         parts.push(
-          `<circle class="pjt-end-cap" cx="${xScale(lp.y)}" cy="${yScale(lp.v)}" r="5.5" fill="${col}" />`
+          `<circle class="pjt-end-cap" cx="${xScale(lp.y)}" cy="${yScale(lp.v)}" r="4.5" fill="${col}" />`
         );
       }
     }
@@ -1679,7 +1767,7 @@ function pjtRenderSvgChart() {
   for (; yr <= x1; yr += yearStep) {
     const x = xScale(yr);
     parts.push(
-      `<text x="${x}" y="${H - 5}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.48">${yr}</text>`
+      `<text x="${x}" y="${H - 5}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.5">${yr}</text>`
     );
   }
 
@@ -1692,26 +1780,6 @@ function pjtRenderSvgChart() {
     'Stacked charts: each row is one World Bank indicator with its own vertical scale in percent.'
   );
   if (skel) skel.hidden = true;
-}
-
-function pjtBuildLegend() {
-  const el = document.getElementById('pjtLegend');
-  if (!el || !_pjtMacro) return;
-  el.innerHTML = _pjtMacro.series
-    .map((s) => {
-      const col = PJT_COLORS[s.id] || '#666';
-      const checked = _pjtVisible[s.id] !== false;
-      return `<label class="pjt-chip" style="--pjt-accent:${col}"><input type="checkbox" data-pjt="${escapeHtml(s.id)}" ${checked ? 'checked' : ''} aria-checked="${checked ? 'true' : 'false'}" /><span class="pjt-chip-swatch" style="background:${col}" aria-hidden="true"></span><span class="pjt-chip-label">${escapeHtml(s.shortLabel)}</span><span class="pjt-chip-unit">${escapeHtml(s.unit)}</span></label>`;
-    })
-    .join('');
-  el.querySelectorAll('input[data-pjt]').forEach((inp) => {
-    inp.addEventListener('change', () => {
-      const id = inp.getAttribute('data-pjt');
-      if (id) _pjtVisible[id] = inp.checked;
-      inp.setAttribute('aria-checked', inp.checked ? 'true' : 'false');
-      pjtRenderSvgChart();
-    });
-  });
 }
 
 async function initPakistanTrajectory() {
@@ -1742,16 +1810,15 @@ async function initPakistanTrajectory() {
   const updatedEl = document.getElementById('pjtUpdated');
   if (updatedEl && macro.meta?.updatedAt) {
     const yTo = macro.meta.range?.to;
-    updatedEl.textContent = `Bundle ${macro.meta.updatedAt.slice(0, 10)}${yTo != null ? ` · WB query to ${yTo}` : ''}`;
+    updatedEl.textContent = `WDI · Bundle ${macro.meta.updatedAt.slice(0, 10)}${yTo != null ? ` · query to ${yTo}` : ''}`;
   }
   const disc = document.getElementById('pjtDisclaimer');
   if (disc) disc.textContent = macro.meta?.disclaimer || '';
-  pjtFillLatestStrip(macro);
 
   const insightEl = document.getElementById('pjtInsightText');
   if (insightEl) insightEl.innerHTML = pjtFormatInsightToHtml(macro.staticInsight || '');
 
-  pjtBuildLegend();
+  pjtBuildKpis();
   pjtRenderSvgChart();
 
   const btn = document.getElementById('pjtAiBtn');
