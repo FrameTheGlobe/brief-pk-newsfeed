@@ -2071,6 +2071,72 @@ function pjtWireRangeTabs() {
   });
 }
 
+/**
+ * Short, indicator-specific reading notes. Kept in JS (not the JSON bundle)
+ * so editorial copy can evolve independently of the data pipeline.
+ */
+const PJT_READING_NOTES = [
+  'Poverty isn\u2019t annual \u2014 only survey / modelled years are published.',
+  'External debt shown is <strong>stocks / GNI</strong>, not total public debt to GDP.',
+  'Inflation is the annual average CPI change, not end-of-year.',
+  'WDI releases lag \u2014 the newest calendar year differs by indicator.'
+];
+
+function pjtRenderInsightAside(macro) {
+  const aside = document.getElementById('pjtInsightAside');
+  if (!aside) return;
+  const seriesMeta = (macro.series || []).map((s) => {
+    const latestYear = Array.isArray(s.points) && s.points.length
+      ? s.points[s.points.length - 1]?.y
+      : null;
+    return {
+      id: s.id,
+      name: s.shortLabel || s.label || s.id,
+      code: s.wbId || '',
+      year: latestYear
+    };
+  });
+  const colorById = { gdpGrowth: '#0369a1', inflation: '#be123c', extDebtGni: '#a16207', poverty: '#7c3aed' };
+  const indicatorsHtml = seriesMeta
+    .map((s) => {
+      const c = colorById[s.id] || 'var(--brand-navy)';
+      const codeLink = s.code
+        ? `<a href="https://data.worldbank.org/indicator/${encodeURIComponent(s.code)}?locations=PK" target="_blank" rel="noopener" class="pjt-aside-code">${escapeHtml(s.code)}</a>`
+        : '';
+      const yearLabel = s.year != null ? ` · thru ${escapeHtml(String(s.year))}` : '';
+      return (
+        `<li class="pjt-aside-indic">` +
+        `<span class="pjt-aside-dot" style="--c:${c}"></span>` +
+        `<span class="pjt-aside-indic-body">` +
+        `<span class="pjt-aside-indic-name">${escapeHtml(s.name)}</span>` +
+        `<span class="pjt-aside-indic-meta">${codeLink}${yearLabel}</span>` +
+        `</span>` +
+        `</li>`
+      );
+    })
+    .join('');
+
+  const notesHtml = PJT_READING_NOTES.map((n) => `<li>${n}</li>`).join('');
+
+  const src = (macro.meta && macro.meta.sources && macro.meta.sources[0]) || null;
+  const license = src?.license || 'CC BY 4.0';
+  const srcUrl = src?.url || 'https://data.worldbank.org/country/pakistan';
+  const srcName = src?.name || 'World Bank · World Development Indicators';
+
+  aside.innerHTML =
+    '<section class="pjt-aside-block">' +
+      '<h4 class="pjt-aside-head">In this panel</h4>' +
+      `<ul class="pjt-aside-list">${indicatorsHtml}</ul>` +
+    '</section>' +
+    '<section class="pjt-aside-block">' +
+      '<h4 class="pjt-aside-head">Read carefully</h4>' +
+      `<ul class="pjt-aside-notes">${notesHtml}</ul>` +
+    '</section>' +
+    '<p class="pjt-aside-credit">' +
+      `Source <a href="${escapeHtml(srcUrl)}" target="_blank" rel="noopener">${escapeHtml(srcName)}</a> · ${escapeHtml(license)}` +
+    '</p>';
+}
+
 async function initPakistanTrajectory() {
   const section = document.getElementById('pakistanTrajectorySection');
   if (!section) return;
@@ -2106,6 +2172,7 @@ async function initPakistanTrajectory() {
 
   const insightEl = document.getElementById('pjtInsightText');
   if (insightEl) insightEl.innerHTML = pjtFormatInsightToHtml(macro.staticInsight || '');
+  pjtRenderInsightAside(macro);
 
   pjtBuildKpis();
   pjtRenderFocusChart(false);
