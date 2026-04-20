@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/main.css?v=5.0.6" />
+  <link rel="stylesheet" href="/css/main.css?v=5.0.7" />
 </head>
 <body>
   <div class="page-bg"></div>
@@ -110,36 +110,6 @@
     <section id="flashDossierContainer" class="flash-dossier-container"></section>
   </section>
 
-  <!-- ═══ PAKISTAN TRAJECTORY (1989–present, WDI — flagship macro panel) ═══ -->
-  <section class="pakistan-trajectory-section" id="pakistanTrajectorySection" aria-labelledby="pjtHeading">
-    <div class="pjt-card rail-block">
-      <div class="pjt-head">
-        <div>
-          <h2 class="pjt-title" id="pjtHeading">Pakistan trajectory</h2>
-          <p class="pjt-sub">Poverty, growth, inflation &amp; external debt since 1989 — World Bank data</p>
-        </div>
-        <div class="pjt-meta">
-          <span class="pjt-updated" id="pjtUpdated">—</span>
-          <a class="pjt-source-link" href="https://data.worldbank.org/country/pakistan" target="_blank" rel="noopener noreferrer">WDI ↗</a>
-        </div>
-      </div>
-      <p class="pjt-disclaimer" id="pjtDisclaimer"></p>
-      <div class="pjt-legend" id="pjtLegend"></div>
-      <div class="pjt-chart-wrap" id="pjtChartWrap">
-        <div class="pjt-chart-skel skel" id="pjtChartSkel"></div>
-        <svg class="pjt-chart" id="pjtChart" viewBox="0 0 920 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Normalized macro indicators over time"></svg>
-      </div>
-      <p class="pjt-norm-note">Chart scales each series 0–100 so shapes are comparable; see values in the insight below.</p>
-      <div class="pjt-insight-block">
-        <div class="pjt-insight-toolbar">
-          <button type="button" class="pjt-ai-btn" id="pjtAiBtn">AI explanation</button>
-          <span class="pjt-ai-hint" id="pjtAiHint">Uses cached analysis on the server when available — minimal cost.</span>
-        </div>
-        <div class="pjt-insight-text" id="pjtInsightText"></div>
-      </div>
-    </div>
-  </section>
-
   <!-- ═══ TV CHART STRIP ════════════════════════════════════════ -->
   <section class="tv-charts-strip">
     <div class="tv-widget-card kse-local-card" id="kseCard">
@@ -220,6 +190,38 @@
 
     <!-- ── MAIN LANE ──────────────────────────────────────────── -->
     <section class="main-lane">
+
+      <!-- Pakistan macro (center column, below KSE/USDPKR strip — compact) -->
+      <section class="pakistan-trajectory-section pjt-in-main" id="pakistanTrajectorySection" aria-labelledby="pjtHeading">
+        <div class="pjt-card rail-block">
+          <div class="pjt-head">
+            <div>
+              <h2 class="pjt-title" id="pjtHeading">Pakistan trajectory</h2>
+              <p class="pjt-sub">Growth, inflation, debt &amp; poverty (1989→today) · <a class="pjt-inline-source" href="https://data.worldbank.org/country/pakistan" target="_blank" rel="noopener noreferrer">World Bank WDI</a></p>
+            </div>
+            <div class="pjt-meta">
+              <span class="pjt-updated" id="pjtUpdated">—</span>
+            </div>
+          </div>
+          <p class="pjt-disclaimer" id="pjtDisclaimer"></p>
+          <div class="pjt-legend" id="pjtLegend"></div>
+          <div class="pjt-chart-wrap" id="pjtChartWrap">
+            <div class="pjt-chart-skel skel" id="pjtChartSkel"></div>
+            <svg class="pjt-chart" id="pjtChart" viewBox="0 0 720 150" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Normalized macro indicators over time"></svg>
+          </div>
+          <p class="pjt-norm-note">Each line scaled 0–100 for shape comparison (not raw %).</p>
+          <details class="pjt-insight-details" id="pjtInsightDetails">
+            <summary class="pjt-insight-summary">Analysis &amp; AI explanation</summary>
+            <div class="pjt-insight-inner">
+              <div class="pjt-insight-toolbar">
+                <button type="button" class="pjt-ai-btn" id="pjtAiBtn">Refresh AI summary</button>
+                <span class="pjt-ai-hint" id="pjtAiHint">Cached on server when available.</span>
+              </div>
+              <div class="pjt-insight-text" id="pjtInsightText"></div>
+            </div>
+          </details>
+        </div>
+      </section>
 
       <!-- USD/PKR Chart + PSX Signal Matrix -->
       <section class="interactive-tv-grid">

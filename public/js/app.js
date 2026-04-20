@@ -1490,12 +1490,12 @@ function pjtRenderSvgChart() {
   const x0 = meta.range.from;
   const x1 = Math.min(meta.range.to, new Date().getFullYear());
   const spanX = Math.max(x1 - x0, 1);
-  const W = 920;
-  const H = 220;
-  const padL = 48;
-  const padR = 16;
-  const padT = 16;
-  const padB = 36;
+  const W = 720;
+  const H = 150;
+  const padL = 38;
+  const padR = 10;
+  const padT = 10;
+  const padB = 26;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
   const xScale = (yr) => padL + ((yr - x0) / spanX) * innerW;
@@ -1517,7 +1517,7 @@ function pjtRenderSvgChart() {
     const x = xScale(yr);
     parts.push(`<line class="pjt-grid" x1="${x}" y1="${padT}" x2="${x}" y2="${padT + innerH}" />`);
     parts.push(
-      `<text x="${x}" y="${H - 8}" text-anchor="middle" font-size="11" font-family="JetBrains Mono,monospace" fill="currentColor" fill-opacity="0.42">${yr}</text>`
+      `<text x="${x}" y="${H - 6}" text-anchor="middle" font-size="9" font-family="JetBrains Mono,monospace" fill="currentColor" fill-opacity="0.42">${yr}</text>`
     );
   }
 
@@ -1530,7 +1530,7 @@ function pjtRenderSvgChart() {
       for (const pt of norm) {
         const cx = xScale(pt.y);
         const cy = yScale(pt.n);
-        parts.push(`<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="5" fill="${col}" />`);
+        parts.push(`<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="4" fill="${col}" />`);
       }
       for (let i = 1; i < norm.length; i++) {
         const a = norm[i - 1];
@@ -1544,10 +1544,6 @@ function pjtRenderSvgChart() {
       parts.push(`<path class="pjt-line" stroke="${col}" d="${d}" />`);
     }
   }
-
-  parts.push(
-    `<text x="${padL}" y="13" font-size="12" font-weight="600" font-family="Inter,sans-serif" fill="currentColor" fill-opacity="0.5">Each series scaled 0–100 for comparison</text>`
-  );
 
   svg.innerHTML = parts.join('');
   svg.setAttribute('class', 'pjt-chart');

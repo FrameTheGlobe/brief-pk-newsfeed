@@ -3835,6 +3835,122 @@ button:focus-visible,
   border-bottom: 1px solid var(--panel-border);
 }
 
+/* Center column: compact footprint under KSE/USDPKR strip */
+.pjt-in-main {
+  max-width: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.pjt-in-main .pjt-title {
+  font-size: 17px;
+  margin-bottom: 2px;
+}
+
+.pjt-in-main .pjt-sub {
+  font-size: 12px;
+}
+
+.pjt-inline-source {
+  color: var(--brand-blue-dim);
+  text-decoration: none;
+}
+
+.pjt-inline-source:hover {
+  text-decoration: underline;
+}
+
+.pjt-in-main .pjt-head {
+  padding: 10px 14px 8px;
+}
+
+.pjt-in-main .pjt-disclaimer {
+  padding: 6px 14px;
+  font-size: 10px;
+}
+
+.pjt-in-main .pjt-legend {
+  padding: 8px 12px;
+  gap: 6px 10px;
+}
+
+.pjt-in-main .pjt-leg-item {
+  font-size: 9px;
+}
+
+.pjt-in-main .pjt-chart-wrap {
+  min-height: 110px;
+  padding: 4px 6px 2px;
+}
+
+.pjt-in-main .pjt-chart {
+  max-height: 170px;
+}
+
+.pjt-in-main .pjt-chart .pjt-line {
+  stroke-width: 1.85;
+}
+
+.pjt-in-main .pjt-chart .pjt-dot {
+  stroke-width: 1.25;
+}
+
+.pjt-in-main .pjt-norm-note {
+  padding: 4px 14px 8px;
+}
+
+.pjt-insight-details {
+  border-top: 1px solid var(--panel-border);
+  background: var(--surface-2);
+}
+
+.pjt-insight-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.pjt-insight-summary::-webkit-details-marker {
+  display: none;
+}
+
+.pjt-insight-summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.pjt-insight-details[open] .pjt-insight-summary::before {
+  transform: rotate(90deg);
+}
+
+.pjt-insight-summary:focus-visible {
+  outline: 2px solid var(--brand-navy);
+  outline-offset: -2px;
+}
+
+.pjt-insight-inner {
+  padding: 0 14px 12px;
+}
+
+.pjt-insight-details .pjt-insight-toolbar {
+  margin-bottom: 8px;
+}
+
+.pjt-insight-details .pjt-insight-text {
+  font-size: 12.5px;
+  line-height: 1.58;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
 .pjt-insight-block {
   padding: 12px 16px 16px;
   background: var(--surface-2);
