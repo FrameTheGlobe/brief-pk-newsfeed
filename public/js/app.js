@@ -679,14 +679,20 @@ function renderPopularNews() {
     });
   }
   const items = (pool.length > 0 ? pool : state.news).slice(0, 8);
-  el.innerHTML = items.map(n => `
-    <a href="${escapeHtml(n.url)}" class="pop-item" target="_blank">
-      ${n.thumbnail ? `<img src="${escapeHtml(n.thumbnail)}" class="pop-img" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'"/>` : '<div class="pop-img"></div>'}
+  el.innerHTML = items.map((n) => {
+    const src = n.source ? escapeHtml(n.source) : 'Source';
+    const thumb = n.thumbnail
+      ? `<img src="${escapeHtml(n.thumbnail)}" class="pop-img" alt="" loading="lazy" decoding="async" width="56" height="40" onerror="this.onerror=null;this.style.opacity='0'"/>`
+      : '<div class="pop-img pop-img--fallback" aria-hidden="true"></div>';
+    return `
+    <a href="${escapeHtml(n.url)}" class="pop-item" target="_blank" rel="noopener noreferrer">
+      <div class="pop-thumb">${thumb}</div>
       <div class="pop-content">
         <div class="pop-title">${escapeHtml(n.title)}</div>
+        <div class="pop-meta"><span class="pop-src">${src}</span><span class="pop-meta-sep" aria-hidden="true">·</span>${relTimeBadge(n.publishedAt)}</div>
       </div>
-    </a>
-  `).join('');
+    </a>`;
+  }).join('');
 }
 
 function renderMarketSnapshot() {
@@ -1149,10 +1155,14 @@ function bindEvents() {
 
   // Popular period tabs
   const popTabs = document.querySelectorAll('.pop-tab');
-  popTabs.forEach(btn => {
+  popTabs.forEach((btn) => {
     btn.addEventListener('click', () => {
       state.popPeriod = btn.dataset.period || 'today';
-      popTabs.forEach(b => b.classList.toggle('active', b === btn));
+      popTabs.forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
       renderPopularNews();
     });
   });
@@ -1514,6 +1524,39 @@ function pjtFormatInsightToHtml(raw) {
   return body + dev;
 }
 
+/** One-line summary of newest WDI point per series (years differ by publication lag). */
+function pjtFillLatestStrip(macro) {
+  const el = document.getElementById('pjtLatestStrip');
+  if (!el) return;
+  const fromMeta = macro.meta?.latestObs;
+  const rows = Array.isArray(fromMeta)
+    ? fromMeta
+    : (macro.series || []).map((s) => {
+        const pts = s.points || [];
+        const last = pts.length ? pts[pts.length - 1] : null;
+        return {
+          shortLabel: s.shortLabel,
+          unit: s.unit,
+          year: last?.y,
+          value: last?.v
+        };
+      });
+  const parts = rows
+    .filter((o) => o != null && o.value != null && o.year != null)
+    .map((o) => {
+      const pct = o.unit === '%';
+      const v = typeof o.value === 'number' ? o.value.toFixed(1) : String(o.value);
+      return `${o.shortLabel || o.id} ${v}${pct ? '%' : ''} (${o.year})`;
+    });
+  if (!parts.length) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.hidden = false;
+  el.textContent = `Latest in this dataset: ${parts.join(' · ')}`;
+}
+
 /** Stacked small multiples: each visible series uses real % scale + min/max labels on the right. */
 function pjtRenderSvgChart() {
   const svg = document.getElementById('pjtChart');
@@ -1525,12 +1568,12 @@ function pjtRenderSvgChart() {
   const x1 = Math.min(meta.range.to, new Date().getFullYear());
   const spanX = Math.max(x1 - x0, 1);
   const W = 720;
-  const padL = 88;
-  const padR = 52;
+  const padL = 92;
+  const padR = 58;
   const innerW = W - padL - padR;
-  const rowH = 54;
-  const topPad = 4;
-  const xAxisH = 26;
+  const rowH = 58;
+  const topPad = 6;
+  const xAxisH = 28;
   const visible = _pjtMacro.series.filter((s) => _pjtVisible[s.id]);
 
   const xScale = (yr) => padL + ((yr - x0) / spanX) * innerW;
@@ -1578,25 +1621,30 @@ function pjtRenderSvgChart() {
 
     const abb = PJT_ROW_ABBREV[s.id] || s.shortLabel;
     parts.push(
-      `<text x="10" y="${(plotTop + plotBot) / 2}" dominant-baseline="middle" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="600" fill="currentColor" fill-opacity="0.9">${escapeHtml(abb)}</text>`
+      `<text x="10" y="${(plotTop + plotBot) / 2}" dominant-baseline="middle" font-family="Inter,system-ui,sans-serif" font-size="12" font-weight="600" fill="currentColor" fill-opacity="0.92">${escapeHtml(abb)}</text>`
     );
+    const pctSuf = s.unit === '%' ? '%' : '';
     parts.push(
-      `<text x="${W - 8}" y="${plotTop + 11}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.55">${pjtFormatAxisTick(vmax)}${escapeHtml(s.unit === '%' ? '%' : '')}</text>`
+      `<text x="${W - 8}" y="${plotTop + 12}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmax)}${escapeHtml(pctSuf)}</text>`
     );
+    const vmid = (vmin + vmax) / 2;
+    if (plotH >= 28 && Math.abs(vmid - vmin) > 1e-6 && Math.abs(vmax - vmid) > 1e-6) {
+      const yMid = yScale(vmid);
+      parts.push(
+        `<line class="pjt-grid-h" x1="${padL}" y1="${yMid}" x2="${padL + innerW}" y2="${yMid}" stroke="currentColor" stroke-opacity="0.08" stroke-dasharray="3 3" stroke-width="0.75"/>`
+      );
+      parts.push(
+        `<text x="${W - 8}" y="${yMid}" dominant-baseline="middle" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.48">${pjtFormatAxisTick(vmid)}${escapeHtml(pctSuf)}</text>`
+      );
+    }
     parts.push(
-      `<text x="${W - 8}" y="${plotBot - 3}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.55">${pjtFormatAxisTick(vmin)}${escapeHtml(s.unit === '%' ? '%' : '')}</text>`
+      `<text x="${W - 8}" y="${plotBot - 4}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmin)}${escapeHtml(pctSuf)}</text>`
     );
 
     const pts = (s.points || []).filter((p) => Number.isFinite(p.v));
     if (pts.length) {
       if (s.sparse) {
-        for (const p of pts) {
-          const cx = xScale(p.y);
-          const cy = yScale(p.v);
-          parts.push(
-            `<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="4.5" fill="${col}" />`
-          );
-        }
+        const lastIdx = pts.length - 1;
         for (let i = 1; i < pts.length; i++) {
           const a = pts[i - 1];
           const b = pts[i];
@@ -1604,10 +1652,23 @@ function pjtRenderSvgChart() {
             `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2" stroke-linecap="round" d="M ${xScale(a.y)} ${yScale(a.v)} L ${xScale(b.y)} ${yScale(b.v)}"/>`
           );
         }
+        for (let i = 0; i < pts.length; i++) {
+          const p = pts[i];
+          const cx = xScale(p.y);
+          const cy = yScale(p.v);
+          const r = i === lastIdx ? 6 : 4.5;
+          parts.push(
+            `<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="${r}" fill="${col}" />`
+          );
+        }
       } else {
         const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.y)} ${yScale(p.v)}`).join(' ');
         parts.push(
-          `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="${d}"/>`
+          `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" d="${d}"/>`
+        );
+        const lp = pts[pts.length - 1];
+        parts.push(
+          `<circle class="pjt-end-cap" cx="${xScale(lp.y)}" cy="${yScale(lp.v)}" r="5.5" fill="${col}" />`
         );
       }
     }
@@ -1618,7 +1679,7 @@ function pjtRenderSvgChart() {
   for (; yr <= x1; yr += yearStep) {
     const x = xScale(yr);
     parts.push(
-      `<text x="${x}" y="${H - 6}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.4">${yr}</text>`
+      `<text x="${x}" y="${H - 5}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.48">${yr}</text>`
     );
   }
 
@@ -1680,10 +1741,12 @@ async function initPakistanTrajectory() {
 
   const updatedEl = document.getElementById('pjtUpdated');
   if (updatedEl && macro.meta?.updatedAt) {
-    updatedEl.textContent = `Data: ${macro.meta.updatedAt.slice(0, 10)}`;
+    const yTo = macro.meta.range?.to;
+    updatedEl.textContent = `Bundle ${macro.meta.updatedAt.slice(0, 10)}${yTo != null ? ` · WB query to ${yTo}` : ''}`;
   }
   const disc = document.getElementById('pjtDisclaimer');
   if (disc) disc.textContent = macro.meta?.disclaimer || '';
+  pjtFillLatestStrip(macro);
 
   const insightEl = document.getElementById('pjtInsightText');
   if (insightEl) insightEl.innerHTML = pjtFormatInsightToHtml(macro.staticInsight || '');

@@ -69,7 +69,7 @@ async function fetchIndicator(wbId) {
   return { wbName, points };
 }
 
-function buildStaticInsight(seriesById) {
+function buildStaticInsight(seriesById, bundleDateIso) {
   const gdp = seriesById.gdpGrowth?.points || [];
   const pov = seriesById.poverty?.points || [];
   const inf = seriesById.inflation?.points || [];
@@ -88,8 +88,12 @@ function buildStaticInsight(seriesById) {
   const gMin = gdpVs.length ? Math.min(...gdpVs) : NaN;
   const gMax = gdpVs.length ? Math.max(...gdpVs) : NaN;
 
+  const bundleDay = bundleDateIso ? bundleDateIso.slice(0, 10) : '—';
+
   return [
-    'This block uses World Development Indicators. Poverty appears only in survey years (not every year). External debt is external debt stocks as % of GNI — not the same as total government debt-to-GDP.',
+    `This block uses World Development Indicators. This JSON was built on ${bundleDay} (not the same as “data through” — the Bank publishes each indicator on its own schedule). Poverty appears only in survey years. External debt is external debt stocks as % of GNI — not the same as total government debt-to-GDP.`,
+    '',
+    `Newest calendar year in this file — GDP ${g1?.y || '—'}, CPI ${i1?.y || '—'}, external debt ${d1?.y || '—'}, poverty ${p1?.y || '—'} (poverty is sparse).`,
     '',
     `GDP growth from ${g0?.y || '—'} to ${g1?.y || '—'} ranged about ${Number.isFinite(gMin) ? gMin.toFixed(1) : '—'}% to ${Number.isFinite(gMax) ? gMax.toFixed(1) : '—'}%; latest near ${g1 ? g1.v.toFixed(1) : '—'}%.`,
     `Poverty headcount: about ${p0 ? p0.v.toFixed(1) : '—'}% (${p0?.y || '—'}) vs ${p1 ? p1.v.toFixed(1) : '—'}% (${p1?.y || '—'}) — see methodology in Sources.`,
@@ -97,6 +101,20 @@ function buildStaticInsight(seriesById) {
     '',
     'Optional AI summary (below) is cached on the server when Groq is configured.'
   ].join('\n');
+}
+
+function latestObsFromSeries(seriesList) {
+  return seriesList.map((s) => {
+    const pts = s.points || [];
+    const p = pts.length ? pts[pts.length - 1] : null;
+    return {
+      id: s.id,
+      shortLabel: s.shortLabel,
+      unit: s.unit,
+      year: p ? p.y : null,
+      value: p ? p.v : null
+    };
+  });
 }
 
 async function main() {
@@ -119,12 +137,14 @@ async function main() {
     byId[def.id] = entry;
   }
 
+  const updatedAt = new Date().toISOString();
   const payload = {
     meta: {
       country: 'Pakistan',
       iso3: 'PAK',
       range: { from: FROM_YEAR, to: TO_YEAR },
-      updatedAt: new Date().toISOString(),
+      updatedAt,
+      latestObs: latestObsFromSeries(series),
       sources: [
         {
           name: 'World Bank — World Development Indicators',
@@ -133,10 +153,10 @@ async function main() {
         }
       ],
       disclaimer:
-        'Estimates vary by methodology and year. Poverty series are not annual; debt shown is external debt relative to GNI, not total public debt/GDP.',
+        'Estimates vary by methodology and year. Poverty series are not annual; debt shown is external debt relative to GNI, not total public debt/GDP. WDI releases lag: the newest calendar year differs by indicator and is whatever the Bank has published to date.',
       schemaVersion: 1
     },
-    staticInsight: buildStaticInsight(byId),
+    staticInsight: buildStaticInsight(byId, updatedAt),
     series
   };
 

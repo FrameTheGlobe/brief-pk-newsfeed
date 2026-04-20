@@ -15,6 +15,8 @@ const CACHE_TTL_MS = 21 * 24 * 60 * 60 * 1000;
 
 let _cache = null;
 let _cacheTs = 0;
+/** Invalidate AI cache when the macro JSON bundle changes (e.g. after `npm run update-macro`). */
+let _cacheMacroUpdatedAt = null;
 
 function loadMacro() {
   const raw = fs.readFileSync(DATA, 'utf8');
@@ -28,9 +30,14 @@ function summarizeForPrompt(macro) {
     const last = pts[pts.length - 1];
     const first = pts[0];
     lines.push(
-      `- ${s.shortLabel || s.id}: ${pts.length} obs, first ${first ? `${first.v} (${first.y})` : '—'}, latest ${last ? `${last.v} (${last.y})` : '—'}`
+      `- ${s.shortLabel || s.id}: ${pts.length} observations; earliest ${first ? `${first.v} in ${first.y}` : '—'}; latest published value ${last ? `${last.v} in calendar year ${last.y}` : '—'} (use this year when you cite this series).`
     );
   }
+  const meta = macro.meta || {};
+  lines.push(
+    `- Bundle updatedAt (when this JSON was written): ${meta.updatedAt || 'unknown'}`,
+    `- Requested WB date range on fetch: ${meta.range?.from}–${meta.range?.to} (calendar years; Bank may not have released all years yet).`
+  );
   return lines.join('\n');
 }
 
@@ -58,7 +65,11 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (!force && _cache && Date.now() - _cacheTs < CACHE_TTL_MS) {
+  const macroUpdatedAt = String(macro.meta?.updatedAt || '');
+  const cacheStaleForMacro =
+    _cacheMacroUpdatedAt != null && macroUpdatedAt && _cacheMacroUpdatedAt !== macroUpdatedAt;
+
+  if (!force && _cache && Date.now() - _cacheTs < CACHE_TTL_MS && !cacheStaleForMacro) {
     return res.status(200).json({ ..._cache, cached: true });
   }
 
@@ -67,13 +78,14 @@ module.exports = async function handler(req, res) {
 
 Rules:
 - Four short paragraphs max. Plain English. No partisan blame.
+- When you cite the latest value for each series, use the exact calendar year shown after "latest published value" for that bullet (series can end in different years — do not assume they all stop in 2024 or any single year).
 - Mention that poverty observations are not annual and debt shown is external debt relative to GNI, not the same as total government debt/GDP.
-- End with one sentence on data limitations.
+- End with one sentence on publication lag: the JSON bundle date is not the same as "data through today".
 
 Statistics:
 ${summary}
 
-Meta: ${macro.meta?.disclaimer || ''}`;
+Meta disclaimer: ${macro.meta?.disclaimer || ''}`;
 
   try {
     const groqRes = await fetch(GROQ_API_URL, {
@@ -110,6 +122,7 @@ Meta: ${macro.meta?.disclaimer || ''}`;
     };
     _cache = payload;
     _cacheTs = Date.now();
+    _cacheMacroUpdatedAt = macroUpdatedAt;
     return res.status(200).json(payload);
   } catch (err) {
     const fallback = {

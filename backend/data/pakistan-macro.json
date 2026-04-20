@@ -6,7 +6,37 @@
       "from": 1989,
       "to": 2026
     },
-    "updatedAt": "2026-04-20T22:26:12.778Z",
+    "updatedAt": "2026-04-20T22:34:56.846Z",
+    "latestObs": [
+      {
+        "id": "gdpGrowth",
+        "shortLabel": "GDP growth",
+        "unit": "%",
+        "year": 2024,
+        "value": 3.04898287335465
+      },
+      {
+        "id": "inflation",
+        "shortLabel": "CPI inflation",
+        "unit": "%",
+        "year": 2024,
+        "value": 12.6325318530452
+      },
+      {
+        "id": "extDebtGni",
+        "shortLabel": "External debt / GNI",
+        "unit": "%",
+        "year": 2024,
+        "value": 35.6282760521045
+      },
+      {
+        "id": "poverty",
+        "shortLabel": "Poverty headcount",
+        "unit": "%",
+        "year": 2024,
+        "value": 23
+      }
+    ],
     "sources": [
       {
         "name": "World Bank — World Development Indicators",
@@ -14,10 +44,10 @@
         "license": "CC BY 4.0"
       }
     ],
-    "disclaimer": "Estimates vary by methodology and year. Poverty series are not annual; debt shown is external debt relative to GNI, not total public debt/GDP.",
+    "disclaimer": "Estimates vary by methodology and year. Poverty series are not annual; debt shown is external debt relative to GNI, not total public debt/GDP. WDI releases lag: the newest calendar year differs by indicator and is whatever the Bank has published to date.",
     "schemaVersion": 1
   },
-  "staticInsight": "This block uses World Development Indicators. Poverty appears only in survey years (not every year). External debt is external debt stocks as % of GNI — not the same as total government debt-to-GDP.\n\nGDP growth from 1989 to 2024 ranged about -1.3% to 7.8%; latest near 3.0%.\nPoverty headcount: about 79.5% (1990) vs 23.0% (2024) — see methodology in Sources.\nLatest CPI inflation about 12.6% (2024); external debt about 35.6% of GNI (2024).\n\nOptional AI summary (below) is cached on the server when Groq is configured.",
+  "staticInsight": "This block uses World Development Indicators. This JSON was built on 2026-04-20 (not the same as “data through” — the Bank publishes each indicator on its own schedule). Poverty appears only in survey years. External debt is external debt stocks as % of GNI — not the same as total government debt-to-GDP.\n\nNewest calendar year in this file — GDP 2024, CPI 2024, external debt 2024, poverty 2024 (poverty is sparse).\n\nGDP growth from 1989 to 2024 ranged about -1.3% to 7.8%; latest near 3.0%.\nPoverty headcount: about 79.5% (1990) vs 23.0% (2024) — see methodology in Sources.\nLatest CPI inflation about 12.6% (2024); external debt about 35.6% of GNI (2024).\n\nOptional AI summary (below) is cached on the server when Groq is configured.",
   "series": [
     {
       "id": "gdpGrowth",

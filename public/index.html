@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/main.css?v=5.0.8" />
+  <link rel="stylesheet" href="/css/main.css?v=5.0.10" />
 </head>
 <body>
   <div class="page-bg"></div>
@@ -157,11 +157,11 @@
 
       <!-- Latest Stories (was "Most Popular" but was just recency) -->
       <div class="rail-block popular-widget">
-        <div class="rail-label">Latest Stories</div>
-        <div class="popular-tabs">
-          <button class="pop-tab active" data-period="today">Today</button>
-          <button class="pop-tab" data-period="yesterday">Yesterday</button>
-          <button class="pop-tab" data-period="3d">3 Days</button>
+        <div class="rail-label rail-label--stories">Latest stories</div>
+        <div class="popular-tabs" role="tablist" aria-label="Story time range">
+          <button type="button" class="pop-tab active" role="tab" aria-selected="true" data-period="today">Today</button>
+          <button type="button" class="pop-tab" role="tab" aria-selected="false" data-period="yesterday">Yesterday</button>
+          <button type="button" class="pop-tab" role="tab" aria-selected="false" data-period="3d">3 days</button>
         </div>
         <div id="popularNews" class="popular-list"></div>
       </div>
@@ -205,11 +205,12 @@
             </div>
           </div>
           <p class="pjt-disclaimer" id="pjtDisclaimer"></p>
+          <p class="pjt-latest-strip" id="pjtLatestStrip" aria-live="polite" hidden></p>
           <p class="pjt-show-hint">Show or hide rows:</p>
           <div class="pjt-legend" id="pjtLegend" role="group" aria-label="Indicators to display"></div>
           <div class="pjt-chart-wrap" id="pjtChartWrap">
             <div class="pjt-chart-skel skel" id="pjtChartSkel"></div>
-            <svg class="pjt-chart pjt-chart--multiples" id="pjtChart" viewBox="0 0 720 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Macro indicators over time, one row per series"></svg>
+            <svg class="pjt-chart pjt-chart--multiples" id="pjtChart" viewBox="0 0 720 280" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Macro indicators over time, one row per series"></svg>
           </div>
           <p class="pjt-scale-note">Read each row left-to-right over time. Numbers on the right are the min/max of that row’s scale (same units as WDI — all four are % here).</p>
           <details class="pjt-insight-details" id="pjtInsightDetails">
@@ -217,7 +218,7 @@
             <div class="pjt-insight-inner">
               <div class="pjt-insight-toolbar">
                 <button type="button" class="pjt-ai-btn" id="pjtAiBtn">Refresh AI summary</button>
-                <span class="pjt-ai-hint" id="pjtAiHint">Cached on server when available.</span>
+                <span class="pjt-ai-hint" id="pjtAiHint">Server cache; AI text re-runs when the macro bundle’s date changes.</span>
               </div>
               <div class="pjt-insight-text" id="pjtInsightText"></div>
             </div>
