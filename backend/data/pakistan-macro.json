@@ -6,7 +6,7 @@
       "from": 1989,
       "to": 2026
     },
-    "updatedAt": "2026-04-20T22:15:08.882Z",
+    "updatedAt": "2026-04-20T22:26:12.778Z",
     "sources": [
       {
         "name": "World Bank — World Development Indicators",
@@ -17,7 +17,7 @@
     "disclaimer": "Estimates vary by methodology and year. Poverty series are not annual; debt shown is external debt relative to GNI, not total public debt/GDP.",
     "schemaVersion": 1
   },
-  "staticInsight": "This panel summarizes long-run trends for Pakistan using World Development Indicators. Poverty is reported only for survey/modelled years (not every year). External debt is shown as external debt stocks relative to GNI—a standard burden measure, not identical to general government debt-to-GDP.\n\nFrom 1989 to 2024, annual GDP growth ranged roughly -1.3% to 7.8%, with the latest observation near 3.0%.\nPoverty headcount (World Bank series shown in the chart) was about 79.5% in 1990 versus 23% in 2024—interpret alongside methodology notes in Sources.\nInflation most recently is near 12.6% (2024); external debt stocks are near 35.6% of GNI (2024).\n\nTap “AI explanation” for an optional plain-language synthesis (cached on the server when Groq is configured). To refresh numbers, run: npm run update-macro",
+  "staticInsight": "This block uses World Development Indicators. Poverty appears only in survey years (not every year). External debt is external debt stocks as % of GNI — not the same as total government debt-to-GDP.\n\nGDP growth from 1989 to 2024 ranged about -1.3% to 7.8%; latest near 3.0%.\nPoverty headcount: about 79.5% (1990) vs 23.0% (2024) — see methodology in Sources.\nLatest CPI inflation about 12.6% (2024); external debt about 35.6% of GNI (2024).\n\nOptional AI summary (below) is cached on the server when Groq is configured.",
   "series": [
     {
       "id": "gdpGrowth",

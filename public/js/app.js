@@ -1469,18 +1469,52 @@ const PJT_COLORS = {
 let _pjtMacro = null;
 const _pjtVisible = Object.create(null);
 
-function pjtNormalizePoints(points) {
-  const vs = points.map((p) => p.v);
-  const min = Math.min(...vs);
-  const max = Math.max(...vs);
-  const span = Math.max(max - min, 1e-9);
-  return points.map((p) => ({
-    y: p.y,
-    v: p.v,
-    n: span <= 1e-9 ? 0.5 : (p.v - min) / span
-  }));
+/** Per-row label (short, fits beside chart). */
+const PJT_ROW_ABBREV = {
+  gdpGrowth: 'GDP',
+  inflation: 'CPI',
+  extDebtGni: 'Debt/GNI',
+  poverty: 'Poverty'
+};
+
+function pjtYRange(points) {
+  const vs = points.map((p) => p.v).filter(Number.isFinite);
+  if (!vs.length) return { min: 0, max: 1 };
+  let lo = Math.min(...vs);
+  let hi = Math.max(...vs);
+  if (hi - lo < 1e-9) {
+    lo -= 1;
+    hi += 1;
+  }
+  const pad = (hi - lo) * 0.08 || 0.5;
+  return { min: lo - pad, max: hi + pad };
 }
 
+function pjtFormatAxisTick(v) {
+  if (!Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 100) return String(Math.round(v));
+  return (Math.round(v * 10) / 10).toFixed(1);
+}
+
+/** Turn bundled / AI text into readable HTML; strip dev-only npm line. */
+function pjtFormatInsightToHtml(raw) {
+  let t = (raw || '').replace(/\s*To refresh numbers, run:\s*npm run update-macro\s*/gi, '').trim();
+  if (!t) return '<p class="pjt-insight-p pjt-insight-p--muted">No analysis text yet.</p>';
+  const paras = t.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  const body = paras
+    .map((block) => {
+      const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+      const inner = lines.map((line) => escapeHtml(line)).join('<br />');
+      return `<p class="pjt-insight-p">${inner}</p>`;
+    })
+    .join('');
+  const dev =
+    '<details class="pjt-dev-hint"><summary>Developer</summary><p class="pjt-insight-p pjt-insight-p--small">Regenerate static JSON: <code>npm run update-macro</code></p></details>';
+  return body + dev;
+}
+
+/** Stacked small multiples: each visible series uses real % scale + min/max labels on the right. */
 function pjtRenderSvgChart() {
   const svg = document.getElementById('pjtChart');
   const skel = document.getElementById('pjtChartSkel');
@@ -1491,64 +1525,111 @@ function pjtRenderSvgChart() {
   const x1 = Math.min(meta.range.to, new Date().getFullYear());
   const spanX = Math.max(x1 - x0, 1);
   const W = 720;
-  const H = 150;
-  const padL = 38;
-  const padR = 10;
-  const padT = 10;
-  const padB = 26;
+  const padL = 88;
+  const padR = 52;
   const innerW = W - padL - padR;
-  const innerH = H - padT - padB;
+  const rowH = 54;
+  const topPad = 4;
+  const xAxisH = 26;
+  const visible = _pjtMacro.series.filter((s) => _pjtVisible[s.id]);
+
   const xScale = (yr) => padL + ((yr - x0) / spanX) * innerW;
-  const yScale = (n) => padT + innerH - n * innerH;
 
-  const parts = [];
-  parts.push(
-    `<rect x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="none" stroke="currentColor" stroke-opacity="0.12" rx="2"/>`
-  );
-
-  for (let g = 0; g <= 4; g++) {
-    const yy = padT + (innerH * g) / 4;
-    parts.push(`<line class="pjt-grid" x1="${padL}" y1="${yy}" x2="${padL + innerW}" y2="${yy}" />`);
+  if (!visible.length) {
+    const H = 96;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('aria-label', 'Macro charts: no series selected');
+    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" dominant-baseline="middle" fill="currentColor" fill-opacity="0.5" font-family="Inter,system-ui,sans-serif" font-size="13">Turn on at least one indicator below.</text>`;
+    svg.setAttribute('class', 'pjt-chart pjt-chart--multiples');
+    if (skel) skel.hidden = true;
+    return;
   }
 
+  const plotStackH = visible.length * rowH;
+  const plotBottom = topPad + plotStackH;
+  const H = topPad + plotStackH + xAxisH;
+
+  const parts = [];
   const yearStep = spanX > 35 ? 10 : 5;
   let yr = Math.ceil(x0 / yearStep) * yearStep;
   for (; yr <= x1; yr += yearStep) {
-    const x = xScale(yr);
-    parts.push(`<line class="pjt-grid" x1="${x}" y1="${padT}" x2="${x}" y2="${padT + innerH}" />`);
+    const gx = xScale(yr);
     parts.push(
-      `<text x="${x}" y="${H - 6}" text-anchor="middle" font-size="9" font-family="JetBrains Mono,monospace" fill="currentColor" fill-opacity="0.42">${yr}</text>`
+      `<line class="pjt-grid-v" x1="${gx}" y1="${topPad}" x2="${gx}" y2="${plotBottom}" stroke="currentColor" stroke-opacity="0.1" stroke-width="0.75"/>`
     );
   }
 
-  for (const s of _pjtMacro.series) {
-    if (!_pjtVisible[s.id]) continue;
+  let rowIdx = 0;
+  for (const s of visible) {
     const col = PJT_COLORS[s.id] || '#64748b';
-    const norm = pjtNormalizePoints(s.points);
-    if (!norm.length) continue;
-    if (s.sparse) {
-      for (const pt of norm) {
-        const cx = xScale(pt.y);
-        const cy = yScale(pt.n);
-        parts.push(`<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="4" fill="${col}" />`);
-      }
-      for (let i = 1; i < norm.length; i++) {
-        const a = norm[i - 1];
-        const b = norm[i];
+    const y0 = topPad + rowIdx * rowH;
+    const plotTop = y0 + 2;
+    const plotBot = y0 + rowH - 2;
+    const plotH = plotBot - plotTop;
+    const { min: vmin, max: vmax } = pjtYRange(s.points);
+    const spanY = Math.max(vmax - vmin, 1e-9);
+    const yScale = (v) => plotTop + ((vmax - v) / spanY) * plotH;
+
+    const zebra = rowIdx % 2 === 0 ? 0.02 : 0.035;
+    parts.push(`<rect x="0" y="${y0}" width="${W}" height="${rowH}" fill="currentColor" fill-opacity="${zebra}"/>`);
+    parts.push(
+      `<rect x="${padL}" y="${plotTop}" width="${innerW}" height="${plotH}" fill="none" stroke="currentColor" stroke-opacity="0.16" rx="2"/>`
+    );
+
+    const abb = PJT_ROW_ABBREV[s.id] || s.shortLabel;
+    parts.push(
+      `<text x="10" y="${(plotTop + plotBot) / 2}" dominant-baseline="middle" font-family="Inter,system-ui,sans-serif" font-size="11" font-weight="600" fill="currentColor" fill-opacity="0.9">${escapeHtml(abb)}</text>`
+    );
+    parts.push(
+      `<text x="${W - 8}" y="${plotTop + 11}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.55">${pjtFormatAxisTick(vmax)}${escapeHtml(s.unit === '%' ? '%' : '')}</text>`
+    );
+    parts.push(
+      `<text x="${W - 8}" y="${plotBot - 3}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.55">${pjtFormatAxisTick(vmin)}${escapeHtml(s.unit === '%' ? '%' : '')}</text>`
+    );
+
+    const pts = (s.points || []).filter((p) => Number.isFinite(p.v));
+    if (pts.length) {
+      if (s.sparse) {
+        for (const p of pts) {
+          const cx = xScale(p.y);
+          const cy = yScale(p.v);
+          parts.push(
+            `<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="4.5" fill="${col}" />`
+          );
+        }
+        for (let i = 1; i < pts.length; i++) {
+          const a = pts[i - 1];
+          const b = pts[i];
+          parts.push(
+            `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2" stroke-linecap="round" d="M ${xScale(a.y)} ${yScale(a.v)} L ${xScale(b.y)} ${yScale(b.v)}"/>`
+          );
+        }
+      } else {
+        const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.y)} ${yScale(p.v)}`).join(' ');
         parts.push(
-          `<path class="pjt-line" stroke="${col}" d="M ${xScale(a.y)} ${yScale(a.n)} L ${xScale(b.y)} ${yScale(b.n)}" />`
+          `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="${d}"/>`
         );
       }
-    } else {
-      const d = norm.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${xScale(pt.y)} ${yScale(pt.n)}`).join(' ');
-      parts.push(`<path class="pjt-line" stroke="${col}" d="${d}" />`);
     }
+    rowIdx++;
+  }
+
+  yr = Math.ceil(x0 / yearStep) * yearStep;
+  for (; yr <= x1; yr += yearStep) {
+    const x = xScale(yr);
+    parts.push(
+      `<text x="${x}" y="${H - 6}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.4">${yr}</text>`
+    );
   }
 
   svg.innerHTML = parts.join('');
-  svg.setAttribute('class', 'pjt-chart');
+  svg.setAttribute('class', 'pjt-chart pjt-chart--multiples');
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute(
+    'aria-label',
+    'Stacked charts: each row is one World Bank indicator with its own vertical scale in percent.'
+  );
   if (skel) skel.hidden = true;
 }
 
@@ -1559,13 +1640,14 @@ function pjtBuildLegend() {
     .map((s) => {
       const col = PJT_COLORS[s.id] || '#666';
       const checked = _pjtVisible[s.id] !== false;
-      return `<label class="pjt-leg-item"><input type="checkbox" data-pjt="${escapeHtml(s.id)}" ${checked ? 'checked' : ''} /><span style="color:${col};font-weight:700">●</span> ${escapeHtml(s.shortLabel)} <span style="opacity:0.65">(${escapeHtml(s.unit)})</span></label>`;
+      return `<label class="pjt-chip" style="--pjt-accent:${col}"><input type="checkbox" data-pjt="${escapeHtml(s.id)}" ${checked ? 'checked' : ''} aria-checked="${checked ? 'true' : 'false'}" /><span class="pjt-chip-swatch" style="background:${col}" aria-hidden="true"></span><span class="pjt-chip-label">${escapeHtml(s.shortLabel)}</span><span class="pjt-chip-unit">${escapeHtml(s.unit)}</span></label>`;
     })
     .join('');
   el.querySelectorAll('input[data-pjt]').forEach((inp) => {
     inp.addEventListener('change', () => {
       const id = inp.getAttribute('data-pjt');
       if (id) _pjtVisible[id] = inp.checked;
+      inp.setAttribute('aria-checked', inp.checked ? 'true' : 'false');
       pjtRenderSvgChart();
     });
   });
@@ -1604,7 +1686,7 @@ async function initPakistanTrajectory() {
   if (disc) disc.textContent = macro.meta?.disclaimer || '';
 
   const insightEl = document.getElementById('pjtInsightText');
-  if (insightEl) insightEl.textContent = macro.staticInsight || '';
+  if (insightEl) insightEl.innerHTML = pjtFormatInsightToHtml(macro.staticInsight || '');
 
   pjtBuildLegend();
   pjtRenderSvgChart();
@@ -1619,7 +1701,7 @@ async function initPakistanTrajectory() {
       try {
         const res = await fetch(`${API_BASE}/api/pakistan-macro-insight`);
         const j = await res.json();
-        if (insightEl) insightEl.textContent = j.text || '';
+        if (insightEl) insightEl.innerHTML = pjtFormatInsightToHtml(j.text || '');
         if (hint) {
           hint.textContent =
             j.source === 'ai'

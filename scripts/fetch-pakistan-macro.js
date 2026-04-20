@@ -89,13 +89,13 @@ function buildStaticInsight(seriesById) {
   const gMax = gdpVs.length ? Math.max(...gdpVs) : NaN;
 
   return [
-    'This panel summarizes long-run trends for Pakistan using World Development Indicators. Poverty is reported only for survey/modelled years (not every year). External debt is shown as external debt stocks relative to GNI—a standard burden measure, not identical to general government debt-to-GDP.',
+    'This block uses World Development Indicators. Poverty appears only in survey years (not every year). External debt is external debt stocks as % of GNI — not the same as total government debt-to-GDP.',
     '',
-    `From ${g0?.y || '—'} to ${g1?.y || '—'}, annual GDP growth ranged roughly ${Number.isFinite(gMin) ? gMin.toFixed(1) : '—'}% to ${Number.isFinite(gMax) ? gMax.toFixed(1) : '—'}%, with the latest observation near ${g1 ? g1.v.toFixed(1) : '—'}%.`,
-    `Poverty headcount (World Bank series shown in the chart) was about ${p0 ? p0.v : '—'}% in ${p0?.y || '—'} versus ${p1 ? p1.v : '—'}% in ${p1?.y || '—'}—interpret alongside methodology notes in Sources.`,
-    `Inflation most recently is near ${i1 ? i1.v.toFixed(1) : '—'}% (${i1?.y || '—'}); external debt stocks are near ${d1 ? d1.v.toFixed(1) : '—'}% of GNI (${d1?.y || '—'}).`,
+    `GDP growth from ${g0?.y || '—'} to ${g1?.y || '—'} ranged about ${Number.isFinite(gMin) ? gMin.toFixed(1) : '—'}% to ${Number.isFinite(gMax) ? gMax.toFixed(1) : '—'}%; latest near ${g1 ? g1.v.toFixed(1) : '—'}%.`,
+    `Poverty headcount: about ${p0 ? p0.v.toFixed(1) : '—'}% (${p0?.y || '—'}) vs ${p1 ? p1.v.toFixed(1) : '—'}% (${p1?.y || '—'}) — see methodology in Sources.`,
+    `Latest CPI inflation about ${i1 ? i1.v.toFixed(1) : '—'}% (${i1?.y || '—'}); external debt about ${d1 ? d1.v.toFixed(1) : '—'}% of GNI (${d1?.y || '—'}).`,
     '',
-    'Tap “AI explanation” for an optional plain-language synthesis (cached on the server when Groq is configured). To refresh numbers, run: npm run update-macro'
+    'Optional AI summary (below) is cached on the server when Groq is configured.'
   ].join('\n');
 }
 

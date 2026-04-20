@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/main.css?v=5.0.7" />
+  <link rel="stylesheet" href="/css/main.css?v=5.0.8" />
 </head>
 <body>
   <div class="page-bg"></div>
@@ -191,27 +191,29 @@
     <!-- ── MAIN LANE ──────────────────────────────────────────── -->
     <section class="main-lane">
 
-      <!-- Pakistan macro (center column, below KSE/USDPKR strip — compact) -->
+      <!-- Pakistan macro (center column, below KSE/USDPKR strip) -->
       <section class="pakistan-trajectory-section pjt-in-main" id="pakistanTrajectorySection" aria-labelledby="pjtHeading">
         <div class="pjt-card rail-block">
           <div class="pjt-head">
             <div>
-              <h2 class="pjt-title" id="pjtHeading">Pakistan trajectory</h2>
-              <p class="pjt-sub">Growth, inflation, debt &amp; poverty (1989→today) · <a class="pjt-inline-source" href="https://data.worldbank.org/country/pakistan" target="_blank" rel="noopener noreferrer">World Bank WDI</a></p>
+              <p class="pjt-kicker">Long-run context · World Bank</p>
+              <h2 class="pjt-title" id="pjtHeading">Pakistan in context</h2>
+              <p class="pjt-sub">Four indicators, 1989→today — each row is its own chart with a real % scale (not stacked on one axis). <a class="pjt-inline-source" href="https://data.worldbank.org/country/pakistan" target="_blank" rel="noopener noreferrer">WDI data ↗</a></p>
             </div>
             <div class="pjt-meta">
               <span class="pjt-updated" id="pjtUpdated">—</span>
             </div>
           </div>
           <p class="pjt-disclaimer" id="pjtDisclaimer"></p>
-          <div class="pjt-legend" id="pjtLegend"></div>
+          <p class="pjt-show-hint">Show or hide rows:</p>
+          <div class="pjt-legend" id="pjtLegend" role="group" aria-label="Indicators to display"></div>
           <div class="pjt-chart-wrap" id="pjtChartWrap">
             <div class="pjt-chart-skel skel" id="pjtChartSkel"></div>
-            <svg class="pjt-chart" id="pjtChart" viewBox="0 0 720 150" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Normalized macro indicators over time"></svg>
+            <svg class="pjt-chart pjt-chart--multiples" id="pjtChart" viewBox="0 0 720 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Macro indicators over time, one row per series"></svg>
           </div>
-          <p class="pjt-norm-note">Each line scaled 0–100 for shape comparison (not raw %).</p>
+          <p class="pjt-scale-note">Read each row left-to-right over time. Numbers on the right are the min/max of that row’s scale (same units as WDI — all four are % here).</p>
           <details class="pjt-insight-details" id="pjtInsightDetails">
-            <summary class="pjt-insight-summary">Analysis &amp; AI explanation</summary>
+            <summary class="pjt-insight-summary">Read the story · optional AI summary</summary>
             <div class="pjt-insight-inner">
               <div class="pjt-insight-toolbar">
                 <button type="button" class="pjt-ai-btn" id="pjtAiBtn">Refresh AI summary</button>
