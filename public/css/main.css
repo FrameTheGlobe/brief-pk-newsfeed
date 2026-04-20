@@ -3902,13 +3902,13 @@ button:focus-visible,
   background: var(--surface-2);
 }
 
-/* ── KPI card strip (replaces old legend / latest-strip) ─────────────────── */
+/* ── KPI cards act as single-select tabs (selects the focused metric) ────── */
 .pjt-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  padding: 12px 12px 10px;
-  background: var(--surface);
+  padding: 14px 14px 12px;
+  background: var(--surface-2);
   border-bottom: 1px solid var(--panel-border);
 }
 
@@ -3923,34 +3923,33 @@ button:focus-visible,
   position: relative;
   text-align: left;
   border: 1px solid var(--panel-border);
-  background: var(--surface-2);
-  border-radius: 10px;
-  padding: 10px 11px 8px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 11px 12px 9px;
   cursor: pointer;
   user-select: none;
   font-family: var(--ui-font);
   color: var(--text-main);
   overflow: hidden;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.18s ease, box-shadow 0.18s ease;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-height: 118px;
-  opacity: 0.62;
 }
 
 .pjt-kpi:hover {
-  opacity: 0.85;
-  border-color: color-mix(in srgb, var(--pjt-accent) 30%, var(--panel-border));
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--pjt-accent) 40%, var(--panel-border));
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
 }
 
 .pjt-kpi.is-active {
-  opacity: 1;
-  background: var(--surface);
-  border-color: color-mix(in srgb, var(--pjt-accent) 45%, var(--panel-border));
+  background: color-mix(in srgb, var(--pjt-accent) 5%, var(--surface));
+  border-color: color-mix(in srgb, var(--pjt-accent) 55%, var(--panel-border));
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--pjt-accent) 25%, transparent),
-    0 1px 3px rgba(15, 23, 42, 0.04);
+    0 0 0 2px color-mix(in srgb, var(--pjt-accent) 25%, transparent),
+    0 3px 10px rgba(15, 23, 42, 0.06);
 }
 
 .pjt-kpi:focus-visible {
@@ -3983,12 +3982,16 @@ button:focus-visible,
 .pjt-kpi-label {
   font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.pjt-kpi.is-active .pjt-kpi-label {
+  color: var(--pjt-accent);
 }
 
 .pjt-kpi-year {
@@ -4007,18 +4010,10 @@ button:focus-visible,
 
 .pjt-kpi-num {
   font-family: var(--ui-font);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
   color: var(--pjt-accent);
-}
-
-.pjt-kpi.is-active .pjt-kpi-num {
-  color: var(--pjt-accent);
-}
-
-.pjt-kpi:not(.is-active) .pjt-kpi-num {
-  color: var(--text-dim);
 }
 
 .pjt-kpi-delta {
@@ -4043,14 +4038,13 @@ button:focus-visible,
 
 .pjt-kpi-spark {
   margin-top: auto;
-  padding-top: 2px;
+  padding-top: 4px;
   height: 30px;
   opacity: 0.85;
 }
 
 .pjt-kpi:not(.is-active) .pjt-kpi-spark {
-  opacity: 0.4;
-  filter: grayscale(0.4);
+  opacity: 0.55;
 }
 
 .pjt-spark-svg {
@@ -4059,18 +4053,96 @@ button:focus-visible,
   display: block;
 }
 
-/* ── Chart ───────────────────────────────────────────────────────────────── */
+/* ── Focus chart (big, fixed height, interactive) ────────────────────────── */
+.pjt-focus {
+  padding: 16px 18px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.pjt-focus-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.pjt-focus-title-group {
+  min-width: 0;
+}
+
+.pjt-focus-title {
+  margin: 0 0 2px;
+  font-family: var(--ui-font);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.pjt-focus-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  line-height: 1.4;
+}
+
+.pjt-range-tabs {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-2);
+  border-radius: 9px;
+  border: 1px solid var(--panel-border);
+  flex-shrink: 0;
+}
+
+.pjt-range-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 5px 11px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  min-width: 40px;
+}
+
+.pjt-range-tab:hover {
+  color: var(--text-main);
+}
+
+.pjt-range-tab.is-active {
+  background: var(--surface);
+  color: var(--text-main);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 0 0 1px var(--panel-border);
+}
+
+.pjt-range-tab:focus-visible {
+  outline: 2px solid var(--brand-navy);
+  outline-offset: 2px;
+}
+
 .pjt-chart-wrap {
   position: relative;
-  padding: 12px 10px 4px;
-  min-height: 220px;
+  width: 100%;
+  aspect-ratio: 800 / 340;
+  max-height: 380px;
   background: var(--surface);
+  border-radius: 10px;
+  overflow: visible;
 }
 
 .pjt-chart-skel {
   position: absolute;
-  inset: 12px;
-  border-radius: var(--radius-md);
+  inset: 0;
+  border-radius: 10px;
 }
 
 .pjt-chart-skel[hidden] {
@@ -4079,26 +4151,143 @@ button:focus-visible,
 
 .pjt-chart {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  max-height: 360px;
+  overflow: visible;
+  cursor: crosshair;
 }
 
 .pjt-chart .pjt-line {
   fill: none;
-  stroke-width: 2.25;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.08));
 }
 
-.pjt-chart--multiples .pjt-dot {
-  stroke: var(--surface);
-  stroke-width: 1.5;
+.pjt-chart .pjt-area {
+  transition: opacity 0.2s ease;
 }
 
-.pjt-chart--multiples .pjt-end-cap {
-  stroke: var(--surface);
-  stroke-width: 2.25;
+.pjt-chart .pjt-anim {
+  animation: pjtFadeInPath 0.35s ease-out;
+}
+
+@keyframes pjtFadeInPath {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pjt-chart .pjt-marker {
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.18));
+}
+
+.pjt-chart .pjt-crosshair,
+.pjt-chart .pjt-hover-dot {
+  pointer-events: none;
+}
+
+.pjt-tooltip {
+  position: absolute;
+  z-index: 5;
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 10px 9px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.08);
+  font-family: var(--ui-font);
+  min-width: 96px;
+  pointer-events: none;
+  animation: pjtFadeInPath 0.12s ease-out;
+}
+
+.pjt-tooltip[hidden] {
+  display: none;
+}
+
+.pjt-tt-year {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pjt-tt-value {
+  font-family: var(--ui-font);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-top: 2px;
+}
+
+.pjt-tt-deltas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.pjt-tt-d {
+  font-weight: 500;
+}
+
+/* ── Stats strip under the chart ─────────────────────────────────────────── */
+.pjt-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+}
+
+@media (max-width: 640px) {
+  .pjt-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.pjt-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pjt-stat-label {
+  font-family: var(--ui-font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pjt-stat-value {
+  font-family: var(--ui-font);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text-main);
+  line-height: 1.15;
+}
+
+.pjt-stat-value--up { color: #16a34a; }
+.pjt-stat-value--down { color: #dc2626; }
+
+.pjt-stat-meta {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 /* Center column: compact footprint under KSE/USDPKR strip */
@@ -4122,30 +4311,29 @@ button:focus-visible,
 }
 
 .pjt-in-main .pjt-kpis {
-  padding: 10px 10px 8px;
+  padding: 12px 12px 10px;
   gap: 6px;
 }
 
 .pjt-in-main .pjt-kpi {
   min-height: 108px;
-  padding: 9px 10px 7px;
+  padding: 10px 11px 8px;
 }
 
 .pjt-in-main .pjt-kpi-num {
-  font-size: 20px;
+  font-size: 22px;
 }
 
-.pjt-in-main .pjt-chart-wrap {
-  padding: 10px 8px 4px;
-  min-height: 200px;
+.pjt-in-main .pjt-focus {
+  padding: 14px 14px 12px;
 }
 
-.pjt-in-main .pjt-chart--multiples {
-  max-height: 360px;
+.pjt-in-main .pjt-focus-title {
+  font-size: 16px;
 }
 
 .pjt-in-main .pjt-foot-note {
-  padding: 8px 14px 10px;
+  padding: 10px 14px 12px;
   font-size: 11px;
 }
 
@@ -4153,14 +4341,37 @@ button:focus-visible,
   background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
 }
 
+[data-theme="dark"] .pjt-kpis {
+  background: var(--surface);
+}
+
 [data-theme="dark"] .pjt-kpi {
   background: var(--surface-2);
 }
 
 [data-theme="dark"] .pjt-kpi.is-active {
-  background: color-mix(in srgb, var(--pjt-accent) 8%, var(--surface));
+  background: color-mix(in srgb, var(--pjt-accent) 10%, var(--surface-2));
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--pjt-accent) 35%, transparent);
+    0 0 0 2px color-mix(in srgb, var(--pjt-accent) 40%, transparent),
+    0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .pjt-range-tabs {
+  background: var(--surface);
+}
+
+[data-theme="dark"] .pjt-range-tab.is-active {
+  background: var(--surface-2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--panel-border);
+}
+
+[data-theme="dark"] .pjt-tooltip {
+  background: var(--surface-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .pjt-stats {
+  background: var(--surface);
 }
 
 [data-theme="dark"] .pjt-badge {

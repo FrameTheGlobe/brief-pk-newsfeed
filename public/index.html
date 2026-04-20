@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/main.css?v=5.0.11" />
+  <link rel="stylesheet" href="/css/main.css?v=5.0.12" />
 </head>
 <body>
   <div class="page-bg"></div>
@@ -197,16 +197,38 @@
           <header class="pjt-head">
             <div class="pjt-head-text">
               <h2 class="pjt-title" id="pjtHeading">Pakistan in context</h2>
-              <p class="pjt-sub">Four macro indicators since 1989. Tap a card to toggle it in the chart. Source: <a class="pjt-inline-source" href="https://data.worldbank.org/country/pakistan" target="_blank" rel="noopener noreferrer">World Bank WDI ↗</a></p>
+              <p class="pjt-sub">Long-run macro indicators since 1989 · <a class="pjt-inline-source" href="https://data.worldbank.org/country/pakistan" target="_blank" rel="noopener noreferrer">World Bank WDI ↗</a></p>
             </div>
             <span class="pjt-badge" id="pjtUpdated">—</span>
           </header>
-          <div class="pjt-kpis" id="pjtKpis" role="group" aria-label="Indicator cards — tap to toggle in chart"></div>
-          <div class="pjt-chart-wrap" id="pjtChartWrap">
-            <div class="pjt-chart-skel skel" id="pjtChartSkel"></div>
-            <svg class="pjt-chart pjt-chart--multiples" id="pjtChart" viewBox="0 0 720 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Macro indicators over time, one row per series"></svg>
+
+          <div class="pjt-kpis" id="pjtKpis" role="tablist" aria-label="Select an indicator"></div>
+
+          <div class="pjt-focus">
+            <div class="pjt-focus-head">
+              <div class="pjt-focus-title-group">
+                <h3 class="pjt-focus-title" id="pjtFocusTitle">—</h3>
+                <p class="pjt-focus-sub" id="pjtFocusSub"></p>
+              </div>
+              <div class="pjt-range-tabs" role="tablist" aria-label="Time range">
+                <button type="button" class="pjt-range-tab" data-range="10" role="tab" aria-selected="false">10y</button>
+                <button type="button" class="pjt-range-tab" data-range="25" role="tab" aria-selected="false">25y</button>
+                <button type="button" class="pjt-range-tab is-active" data-range="all" role="tab" aria-selected="true">All</button>
+              </div>
+            </div>
+
+            <div class="pjt-chart-wrap" id="pjtChartWrap">
+              <div class="pjt-chart-skel skel" id="pjtChartSkel"></div>
+              <svg class="pjt-chart pjt-chart--focus" id="pjtChart" viewBox="0 0 800 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Focused macro indicator over time"></svg>
+              <div class="pjt-tooltip" id="pjtTooltip" role="status" aria-live="polite" hidden></div>
+              <div class="pjt-hover-badge" id="pjtHoverBadge" hidden></div>
+            </div>
+
+            <div class="pjt-stats" id="pjtStats" aria-live="polite"></div>
           </div>
+
           <p class="pjt-foot-note" id="pjtDisclaimer"></p>
+
           <details class="pjt-insight-details" id="pjtInsightDetails">
             <summary class="pjt-insight-summary">Read the story · optional AI summary</summary>
             <div class="pjt-insight-inner">

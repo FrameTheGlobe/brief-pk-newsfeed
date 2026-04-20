@@ -1488,15 +1488,19 @@ const PJT_COLORS = {
   poverty: '#dc2626'
 };
 
-let _pjtMacro = null;
-const _pjtVisible = Object.create(null);
+/** Plain English context for each indicator (shown under the chart title). */
+const PJT_LABELS = {
+  gdpGrowth: { title: 'GDP growth', sub: 'Annual % change in real GDP · WDI' },
+  inflation: { title: 'CPI inflation', sub: 'Annual % change in consumer prices · WDI' },
+  extDebtGni: { title: 'External debt / GNI', sub: 'External debt stocks as % of GNI · WDI' },
+  poverty: { title: 'Poverty headcount', sub: 'Share of population below the World Bank poverty line (survey years)' }
+};
 
-/** Per-row label (short, fits beside chart). */
-const PJT_ROW_ABBREV = {
-  gdpGrowth: 'GDP',
-  inflation: 'CPI',
-  extDebtGni: 'Debt/GNI',
-  poverty: 'Poverty'
+let _pjtMacro = null;
+const _pjtState = {
+  focused: 'gdpGrowth',
+  range: 'all',
+  hoverIdx: -1
 };
 
 function pjtYRange(points) {
@@ -1508,8 +1512,29 @@ function pjtYRange(points) {
     lo -= 1;
     hi += 1;
   }
-  const pad = (hi - lo) * 0.08 || 0.5;
+  const pad = (hi - lo) * 0.12 || 0.5;
   return { min: lo - pad, max: hi + pad };
+}
+
+/** Build a set of "nice" y-axis tick values covering [min, max]. */
+function pjtNiceTicks(min, max, count = 4) {
+  const span = max - min;
+  if (span <= 0) return [min];
+  const rough = span / count;
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  const m = rough / pow;
+  let step;
+  if (m < 1.5) step = 1 * pow;
+  else if (m < 3) step = 2 * pow;
+  else if (m < 7) step = 5 * pow;
+  else step = 10 * pow;
+  const start = Math.ceil(min / step) * step;
+  const ticks = [];
+  for (let v = start; v <= max + 1e-9; v += step) {
+    ticks.push(Math.round(v * 1000) / 1000);
+    if (ticks.length > 10) break;
+  }
+  return ticks;
 }
 
 function pjtFormatAxisTick(v) {
@@ -1576,7 +1601,10 @@ function pjtRenderSparkline(points, color, W = 120, H = 28) {
   return `<svg class="pjt-spark-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${lx}" cy="${ly}" r="2.25" fill="${color}"/></svg>`;
 }
 
-/** Build the 4 KPI toggle cards (also replaces the former legend). */
+/**
+ * Build 4 KPI cards that act as single-select tabs: clicking one focuses that
+ * metric in the big chart below. Exactly one card is active at a time.
+ */
 function pjtBuildKpis() {
   const el = document.getElementById('pjtKpis');
   if (!el || !_pjtMacro) return;
@@ -1586,7 +1614,7 @@ function pjtBuildKpis() {
       const first = pts[0];
       const last = pts[pts.length - 1];
       const col = PJT_COLORS[s.id] || '#64748b';
-      const checked = _pjtVisible[s.id] !== false;
+      const active = _pjtState.focused === s.id;
       const latestVal = last ? pjtFmtValue(last.v, s.unit) : '—';
       const latestYear = last ? last.y : '';
       const deltaV = first && last ? last.v - first.v : null;
@@ -1598,7 +1626,7 @@ function pjtBuildKpis() {
           : `${deltaV > 0 ? '+' : ''}${Math.abs(deltaV) >= 100 ? deltaV.toFixed(0) : deltaV.toFixed(1)}${s.unit === '%' ? 'pp' : ''} vs ${first.y}`;
       const spark = pjtRenderSparkline(pts, col, 128, 30);
       return `
-        <button type="button" class="pjt-kpi${checked ? ' is-active' : ''}" data-pjt-id="${escapeHtml(s.id)}" style="--pjt-accent:${col}" aria-pressed="${checked ? 'true' : 'false'}" title="Click to ${checked ? 'hide' : 'show'} this series in the chart below">
+        <button type="button" class="pjt-kpi${active ? ' is-active' : ''}" data-pjt-id="${escapeHtml(s.id)}" style="--pjt-accent:${col}" role="tab" aria-selected="${active ? 'true' : 'false'}" tabindex="${active ? '0' : '-1'}">
           <span class="pjt-kpi-accent" aria-hidden="true"></span>
           <div class="pjt-kpi-header">
             <span class="pjt-kpi-label">${escapeHtml(s.shortLabel || s.id)}</span>
@@ -1611,175 +1639,404 @@ function pjtBuildKpis() {
       `;
     })
     .join('');
-  el.querySelectorAll('button.pjt-kpi').forEach((btn) => {
+
+  const buttons = el.querySelectorAll('button.pjt-kpi');
+  buttons.forEach((btn, idx) => {
     btn.addEventListener('click', () => {
-      const id = btn.dataset.pjtId;
-      if (!id) return;
-      const next = !_pjtVisible[id];
-      _pjtVisible[id] = next;
-      btn.classList.toggle('is-active', next);
-      btn.setAttribute('aria-pressed', next ? 'true' : 'false');
-      btn.setAttribute('title', `Click to ${next ? 'hide' : 'show'} this series in the chart below`);
-      pjtRenderSvgChart();
+      pjtSetFocused(btn.dataset.pjtId);
+    });
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = buttons[(idx + 1) % buttons.length];
+        next.focus();
+        pjtSetFocused(next.dataset.pjtId);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = buttons[(idx - 1 + buttons.length) % buttons.length];
+        prev.focus();
+        pjtSetFocused(prev.dataset.pjtId);
+      }
     });
   });
 }
 
+function pjtSetFocused(id) {
+  if (!id || _pjtState.focused === id) return;
+  _pjtState.focused = id;
+  _pjtState.hoverIdx = -1;
+  document.querySelectorAll('#pjtKpis .pjt-kpi').forEach((b) => {
+    const on = b.dataset.pjtId === id;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.setAttribute('tabindex', on ? '0' : '-1');
+  });
+  pjtRenderFocusChart(true);
+  pjtRenderStats();
+}
+
+function pjtSetRange(range) {
+  const r = range === 'all' ? 'all' : parseInt(range, 10);
+  if (_pjtState.range === r) return;
+  _pjtState.range = r;
+  document.querySelectorAll('.pjt-range-tab').forEach((b) => {
+    const on = b.dataset.range === String(range);
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  _pjtState.hoverIdx = -1;
+  pjtRenderFocusChart(true);
+  pjtRenderStats();
+}
+
+/** Filter a series' points to the current range window. */
+function pjtFilterByRange(points) {
+  if (_pjtState.range === 'all' || !points.length) return points.slice();
+  const last = points[points.length - 1];
+  const from = last.y - _pjtState.range;
+  return points.filter((p) => p.y >= from);
+}
+
+function pjtFocusedSeries() {
+  if (!_pjtMacro) return null;
+  return _pjtMacro.series.find((s) => s.id === _pjtState.focused) || _pjtMacro.series[0];
+}
+
 /**
- * Stacked small multiples chart. Row labels live INSIDE each plot as colored
- * pills at the top-left so the plot uses the full available width (no giant
- * whitespace column on the left). Min / max / mid values are shown as tight
- * axis ticks on the right.
+ * Single focused chart for the currently selected indicator. Fixed height — no
+ * layout jumping when the user switches metric. Includes area gradient,
+ * peak / low / latest markers, and a live hover crosshair that is wired up in
+ * pjtWireChartHover().
  */
-function pjtRenderSvgChart() {
+const PJT_CHART_VB = { W: 800, H: 340 };
+const PJT_PAD = { L: 50, R: 28, T: 16, B: 32 };
+
+/** Store scales / points so the hover handler can look them up without recomputing. */
+let _pjtChartCtx = null;
+
+function pjtRenderFocusChart(animate = false) {
   const svg = document.getElementById('pjtChart');
   const skel = document.getElementById('pjtChartSkel');
+  const titleEl = document.getElementById('pjtFocusTitle');
+  const subEl = document.getElementById('pjtFocusSub');
   if (!svg || !_pjtMacro) return;
 
-  const meta = _pjtMacro.meta;
-  const x0 = meta.range.from;
-  const x1 = Math.min(meta.range.to, new Date().getFullYear());
-  const spanX = Math.max(x1 - x0, 1);
-  const W = 720;
-  const padL = 10;
-  const padR = 44;
-  const innerW = W - padL - padR;
-  const rowH = 70;
-  const rowGap = 6;
-  const topPad = 6;
-  const xAxisH = 22;
-  const visible = _pjtMacro.series.filter((s) => _pjtVisible[s.id]);
+  const s = pjtFocusedSeries();
+  if (!s) return;
+  const col = PJT_COLORS[s.id] || '#64748b';
+  const label = PJT_LABELS[s.id] || { title: s.shortLabel || s.id, sub: '' };
 
-  const xScale = (yr) => padL + ((yr - x0) / spanX) * innerW;
+  if (titleEl) titleEl.textContent = label.title;
+  if (subEl) subEl.textContent = label.sub;
 
-  if (!visible.length) {
-    const H = 96;
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svg.setAttribute('aria-label', 'Macro charts: no series selected');
-    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" dominant-baseline="middle" fill="currentColor" fill-opacity="0.55" font-family="Inter,system-ui,sans-serif" font-size="13">Tap a KPI card above to show it in the chart.</text>`;
-    svg.setAttribute('class', 'pjt-chart pjt-chart--multiples');
+  const allPts = (s.points || []).filter((p) => Number.isFinite(p.v));
+  const pts = pjtFilterByRange(allPts);
+
+  const { W, H } = PJT_CHART_VB;
+  const { L: padL, R: padR, T: padT, B: padB } = PJT_PAD;
+  const plotL = padL;
+  const plotR = W - padR;
+  const plotT = padT;
+  const plotB = H - padB;
+  const plotW = plotR - plotL;
+  const plotH = plotB - plotT;
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  if (!pts.length) {
+    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" dominant-baseline="middle" fill="currentColor" fill-opacity="0.5" font-family="Inter,system-ui,sans-serif" font-size="13">No observations in this range.</text>`;
+    _pjtChartCtx = null;
     if (skel) skel.hidden = true;
     return;
   }
 
-  const plotStackH = visible.length * rowH + (visible.length - 1) * rowGap;
-  const plotBottom = topPad + plotStackH;
-  const H = topPad + plotStackH + xAxisH;
+  const years = pts.map((p) => p.y);
+  const xMin = years[0];
+  const xMax = years[years.length - 1];
+  const xSpan = Math.max(xMax - xMin, 1);
+  const { min: yMin, max: yMax } = pjtYRange(pts);
+  const ySpan = Math.max(yMax - yMin, 1e-9);
+
+  const xScale = (y) => plotL + ((y - xMin) / xSpan) * plotW;
+  const yScale = (v) => plotT + ((yMax - v) / ySpan) * plotH;
 
   const parts = [];
-  const yearStep = spanX > 35 ? 10 : 5;
-  let yr = Math.ceil(x0 / yearStep) * yearStep;
-  for (; yr <= x1; yr += yearStep) {
-    const gx = xScale(yr);
+
+  const gradId = `pjt-grad-${s.id}`;
+  parts.push(
+    `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity="0.32"/><stop offset="100%" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`
+  );
+
+  const yTicks = pjtNiceTicks(yMin, yMax, 4);
+  const pctSuf = s.unit === '%' ? '%' : '';
+  for (const t of yTicks) {
+    const y = yScale(t);
+    if (y < plotT - 0.5 || y > plotB + 0.5) continue;
     parts.push(
-      `<line class="pjt-grid-v" x1="${gx}" y1="${topPad}" x2="${gx}" y2="${plotBottom}" stroke="currentColor" stroke-opacity="0.08" stroke-width="0.75"/>`
+      `<line class="pjt-grid-h" x1="${plotL}" y1="${y}" x2="${plotR}" y2="${y}" stroke="currentColor" stroke-opacity="0.09" stroke-dasharray="2 4" stroke-width="0.75"/>`
+    );
+    parts.push(
+      `<text x="${plotL - 10}" y="${y}" dominant-baseline="middle" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" fill-opacity="0.55">${pjtFormatAxisTick(t)}${escapeHtml(pctSuf)}</text>`
     );
   }
 
-  let rowIdx = 0;
-  for (const s of visible) {
-    const col = PJT_COLORS[s.id] || '#64748b';
-    const y0 = topPad + rowIdx * (rowH + rowGap);
-    const plotTop = y0;
-    const plotBot = y0 + rowH;
-    const plotH = rowH;
-    const { min: vmin, max: vmax } = pjtYRange(s.points);
-    const spanY = Math.max(vmax - vmin, 1e-9);
-    const yScale = (v) => plotTop + ((vmax - v) / spanY) * plotH;
-
+  const yearStep = xSpan > 35 ? 10 : xSpan > 15 ? 5 : xSpan > 8 ? 2 : 1;
+  const firstTick = Math.ceil(xMin / yearStep) * yearStep;
+  for (let y = firstTick; y <= xMax; y += yearStep) {
+    const x = xScale(y);
     parts.push(
-      `<rect x="${padL}" y="${y0}" width="${innerW}" height="${rowH}" fill="${col}" fill-opacity="0.05" rx="6"/>`
+      `<line x1="${x}" y1="${plotT}" x2="${x}" y2="${plotB}" stroke="currentColor" stroke-opacity="0.05" stroke-width="0.75"/>`
     );
     parts.push(
-      `<rect x="${padL}" y="${y0}" width="${innerW}" height="${rowH}" fill="none" stroke="${col}" stroke-opacity="0.18" stroke-width="1" rx="6"/>`
-    );
-
-    const abb = PJT_ROW_ABBREV[s.id] || s.shortLabel;
-    const labelW = Math.max(38, abb.length * 7 + 16);
-    parts.push(
-      `<rect x="${padL + 8}" y="${y0 + 8}" width="${labelW}" height="18" rx="9" fill="${col}" fill-opacity="0.95"/>`
-    );
-    parts.push(
-      `<text x="${padL + 8 + labelW / 2}" y="${y0 + 17}" text-anchor="middle" dominant-baseline="middle" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="700" fill="#fff" letter-spacing="0.02em">${escapeHtml(abb.toUpperCase())}</text>`
-    );
-
-    const pctSuf = s.unit === '%' ? '%' : '';
-    const tickX = W - 6;
-    parts.push(
-      `<text x="${tickX}" y="${plotTop + 10}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmax)}${escapeHtml(pctSuf)}</text>`
-    );
-    const vmid = (vmin + vmax) / 2;
-    if (plotH >= 34 && Math.abs(vmid - vmin) > 1e-6 && Math.abs(vmax - vmid) > 1e-6) {
-      const yMid = yScale(vmid);
-      parts.push(
-        `<line x1="${padL + 4}" y1="${yMid}" x2="${padL + innerW - 4}" y2="${yMid}" stroke="currentColor" stroke-opacity="0.08" stroke-dasharray="2 4" stroke-width="0.75"/>`
-      );
-      parts.push(
-        `<text x="${tickX}" y="${yMid}" dominant-baseline="middle" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="currentColor" fill-opacity="0.48">${pjtFormatAxisTick(vmid)}${escapeHtml(pctSuf)}</text>`
-      );
-    }
-    parts.push(
-      `<text x="${tickX}" y="${plotBot - 5}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.62">${pjtFormatAxisTick(vmin)}${escapeHtml(pctSuf)}</text>`
-    );
-
-    const pts = (s.points || []).filter((p) => Number.isFinite(p.v));
-    if (pts.length) {
-      if (s.sparse) {
-        const lastIdx = pts.length - 1;
-        for (let i = 1; i < pts.length; i++) {
-          const a = pts[i - 1];
-          const b = pts[i];
-          parts.push(
-            `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2" stroke-linecap="round" d="M ${xScale(a.y)} ${yScale(a.v)} L ${xScale(b.y)} ${yScale(b.v)}"/>`
-          );
-        }
-        for (let i = 0; i < pts.length; i++) {
-          const p = pts[i];
-          const cx = xScale(p.y);
-          const cy = yScale(p.v);
-          const r = i === lastIdx ? 6 : 4.5;
-          parts.push(
-            `<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="${r}" fill="${col}" />`
-          );
-        }
-      } else {
-        const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.y)} ${yScale(p.v)}`).join(' ');
-        const areaD =
-          `M ${xScale(pts[0].y)} ${plotBot} ` +
-          pts.map((p) => `L ${xScale(p.y)} ${yScale(p.v)}`).join(' ') +
-          ` L ${xScale(pts[pts.length - 1].y)} ${plotBot} Z`;
-        parts.push(
-          `<path class="pjt-area" fill="${col}" fill-opacity="0.1" stroke="none" d="${areaD}"/>`
-        );
-        parts.push(
-          `<path class="pjt-line" stroke="${col}" fill="none" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" d="${d}"/>`
-        );
-        const lp = pts[pts.length - 1];
-        parts.push(
-          `<circle class="pjt-end-cap" cx="${xScale(lp.y)}" cy="${yScale(lp.v)}" r="4.5" fill="${col}" />`
-        );
-      }
-    }
-    rowIdx++;
-  }
-
-  yr = Math.ceil(x0 / yearStep) * yearStep;
-  for (; yr <= x1; yr += yearStep) {
-    const x = xScale(yr);
-    parts.push(
-      `<text x="${x}" y="${H - 5}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="currentColor" fill-opacity="0.5">${yr}</text>`
+      `<text x="${x}" y="${plotB + 18}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10.5" fill="currentColor" fill-opacity="0.55">${y}</text>`
     );
   }
+
+  parts.push(
+    `<line x1="${plotL}" y1="${plotB}" x2="${plotR}" y2="${plotB}" stroke="currentColor" stroke-opacity="0.25" stroke-width="1"/>`
+  );
+
+  const linePath = pts
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${xScale(p.y).toFixed(2)} ${yScale(p.v).toFixed(2)}`)
+    .join(' ');
+  const areaPath =
+    `M ${xScale(pts[0].y).toFixed(2)} ${plotB} ` +
+    pts.map((p) => `L ${xScale(p.y).toFixed(2)} ${yScale(p.v).toFixed(2)}`).join(' ') +
+    ` L ${xScale(pts[pts.length - 1].y).toFixed(2)} ${plotB} Z`;
+
+  parts.push(
+    `<path class="pjt-area${animate ? ' pjt-anim' : ''}" fill="url(#${gradId})" stroke="none" d="${areaPath}"/>`
+  );
+  parts.push(
+    `<path class="pjt-line${animate ? ' pjt-anim' : ''}" stroke="${col}" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="${linePath}"/>`
+  );
+
+  let maxI = 0;
+  let minI = 0;
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].v > pts[maxI].v) maxI = i;
+    if (pts[i].v < pts[minI].v) minI = i;
+  }
+  const lastI = pts.length - 1;
+
+  const annotate = (idx, kind, txt) => {
+    const p = pts[idx];
+    const cx = xScale(p.y);
+    const cy = yScale(p.v);
+    const above = cy > plotT + 32;
+    const labelY = above ? cy - 14 : cy + 20;
+    const textAnchor = cx < plotL + 60 ? 'start' : cx > plotR - 60 ? 'end' : 'middle';
+    parts.push(
+      `<circle class="pjt-marker pjt-marker--${kind}" cx="${cx}" cy="${cy}" r="4.5" fill="${col}" stroke="var(--surface, #fff)" stroke-width="2"/>`
+    );
+    parts.push(
+      `<text x="${cx}" y="${labelY}" text-anchor="${textAnchor}" font-family="Inter,system-ui,sans-serif" font-size="10.5" font-weight="600" fill="${col}">${escapeHtml(txt)}</text>`
+    );
+  };
+  if (pts.length > 1 && maxI !== lastI) {
+    annotate(maxI, 'peak', `Peak ${pjtFmtValue(pts[maxI].v, s.unit)} (${pts[maxI].y})`);
+  }
+  if (pts.length > 2 && minI !== lastI && minI !== maxI) {
+    annotate(minI, 'low', `Low ${pjtFmtValue(pts[minI].v, s.unit)} (${pts[minI].y})`);
+  }
+  annotate(lastI, 'now', `${pjtFmtValue(pts[lastI].v, s.unit)} · ${pts[lastI].y}`);
+
+  parts.push(
+    `<line class="pjt-crosshair" id="pjtCross" x1="0" y1="${plotT}" x2="0" y2="${plotB}" stroke="${col}" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`
+  );
+  parts.push(
+    `<circle class="pjt-hover-dot" id="pjtHoverDot" r="5" cx="0" cy="0" fill="${col}" stroke="var(--surface, #fff)" stroke-width="2" visibility="hidden"/>`
+  );
 
   svg.innerHTML = parts.join('');
-  svg.setAttribute('class', 'pjt-chart pjt-chart--multiples');
-  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.setAttribute(
-    'aria-label',
-    'Stacked charts: each row is one World Bank indicator with its own vertical scale in percent.'
-  );
+  svg.setAttribute('class', 'pjt-chart pjt-chart--focus');
+  svg.setAttribute('aria-label', `${label.title} — ${label.sub}`);
   if (skel) skel.hidden = true;
+
+  _pjtChartCtx = {
+    W,
+    H,
+    plotL,
+    plotR,
+    plotT,
+    plotB,
+    plotW,
+    plotH,
+    xMin,
+    xMax,
+    xSpan,
+    pts,
+    color: col,
+    unit: s.unit,
+    xScale,
+    yScale
+  };
+}
+
+function pjtRenderStats() {
+  const el = document.getElementById('pjtStats');
+  if (!el || !_pjtMacro) return;
+  const s = pjtFocusedSeries();
+  if (!s) return;
+  const allPts = (s.points || []).filter((p) => Number.isFinite(p.v));
+  if (!allPts.length) {
+    el.innerHTML = '';
+    return;
+  }
+  let maxI = 0;
+  let minI = 0;
+  for (let i = 1; i < allPts.length; i++) {
+    if (allPts[i].v > allPts[maxI].v) maxI = i;
+    if (allPts[i].v < allPts[minI].v) minI = i;
+  }
+  const first = allPts[0];
+  const last = allPts[allPts.length - 1];
+  const delta = last.v - first.v;
+  const deltaSign = delta > 0 ? '+' : '';
+  const deltaStr = `${deltaSign}${Math.abs(delta) >= 100 ? delta.toFixed(0) : delta.toFixed(1)}${s.unit === '%' ? 'pp' : ''}`;
+  const deltaDir = delta > 0.05 ? 'up' : delta < -0.05 ? 'down' : 'flat';
+
+  el.innerHTML = `
+    <div class="pjt-stat">
+      <span class="pjt-stat-label">Latest</span>
+      <span class="pjt-stat-value">${pjtFmtValue(last.v, s.unit)}</span>
+      <span class="pjt-stat-meta">${last.y}</span>
+    </div>
+    <div class="pjt-stat">
+      <span class="pjt-stat-label">Peak</span>
+      <span class="pjt-stat-value">${pjtFmtValue(allPts[maxI].v, s.unit)}</span>
+      <span class="pjt-stat-meta">${allPts[maxI].y}</span>
+    </div>
+    <div class="pjt-stat">
+      <span class="pjt-stat-label">Low</span>
+      <span class="pjt-stat-value">${pjtFmtValue(allPts[minI].v, s.unit)}</span>
+      <span class="pjt-stat-meta">${allPts[minI].y}</span>
+    </div>
+    <div class="pjt-stat">
+      <span class="pjt-stat-label">Change since ${first.y}</span>
+      <span class="pjt-stat-value pjt-stat-value--${deltaDir}">${deltaStr}</span>
+      <span class="pjt-stat-meta">${last.y - first.y} yrs</span>
+    </div>
+  `;
+}
+
+function pjtWireChartHover() {
+  const wrap = document.getElementById('pjtChartWrap');
+  const svg = document.getElementById('pjtChart');
+  const tooltip = document.getElementById('pjtTooltip');
+  if (!wrap || !svg || !tooltip || wrap.dataset.wired === '1') return;
+  wrap.dataset.wired = '1';
+
+  const hideHover = () => {
+    const cross = svg.querySelector('#pjtCross');
+    const dot = svg.querySelector('#pjtHoverDot');
+    if (cross) cross.setAttribute('visibility', 'hidden');
+    if (dot) dot.setAttribute('visibility', 'hidden');
+    tooltip.hidden = true;
+    _pjtState.hoverIdx = -1;
+  };
+
+  const onMove = (clientX, clientY) => {
+    const ctx = _pjtChartCtx;
+    if (!ctx || !ctx.pts.length) return;
+    const rect = svg.getBoundingClientRect();
+    const relX = clientX - rect.left;
+    const svgX = (relX / rect.width) * ctx.W;
+    if (svgX < ctx.plotL - 8 || svgX > ctx.plotR + 8) {
+      hideHover();
+      return;
+    }
+    const targetYear = ctx.xMin + ((svgX - ctx.plotL) / ctx.plotW) * ctx.xSpan;
+    let idx = 0;
+    let best = Infinity;
+    for (let i = 0; i < ctx.pts.length; i++) {
+      const d = Math.abs(ctx.pts[i].y - targetYear);
+      if (d < best) { best = d; idx = i; }
+    }
+    if (idx === _pjtState.hoverIdx) {
+      const p = ctx.pts[idx];
+      const cx = ctx.xScale(p.y);
+      const cy = ctx.yScale(p.v);
+      pjtPositionTooltip(wrap, svg, cx, cy, rect);
+      return;
+    }
+    _pjtState.hoverIdx = idx;
+
+    const p = ctx.pts[idx];
+    const cx = ctx.xScale(p.y);
+    const cy = ctx.yScale(p.v);
+    const cross = svg.querySelector('#pjtCross');
+    const dot = svg.querySelector('#pjtHoverDot');
+    if (cross) {
+      cross.setAttribute('x1', cx);
+      cross.setAttribute('x2', cx);
+      cross.setAttribute('visibility', 'visible');
+    }
+    if (dot) {
+      dot.setAttribute('cx', cx);
+      dot.setAttribute('cy', cy);
+      dot.setAttribute('visibility', 'visible');
+    }
+
+    const prev = idx > 0 ? ctx.pts[idx - 1] : null;
+    const yoy = prev ? p.v - prev.v : null;
+    const first = ctx.pts[0];
+    const sinceFirst = p.v - first.v;
+    const sign = (n) => (n > 0 ? '+' : '');
+    const pp = ctx.unit === '%' ? 'pp' : '';
+    const fmt = (n) => `${sign(n)}${Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(1)}${pp}`;
+    tooltip.innerHTML = `
+      <div class="pjt-tt-year">${p.y}</div>
+      <div class="pjt-tt-value" style="color:${ctx.color}">${pjtFmtValue(p.v, ctx.unit)}</div>
+      <div class="pjt-tt-deltas">
+        ${yoy != null ? `<span class="pjt-tt-d">YoY ${fmt(yoy)}</span>` : ''}
+        <span class="pjt-tt-d">vs ${first.y} ${fmt(sinceFirst)}</span>
+      </div>
+    `;
+    tooltip.hidden = false;
+    pjtPositionTooltip(wrap, svg, cx, cy, rect);
+  };
+
+  svg.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+  svg.addEventListener('mouseleave', hideHover);
+  svg.addEventListener('touchstart', (e) => {
+    if (e.touches.length) onMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  svg.addEventListener('touchmove', (e) => {
+    if (e.touches.length) onMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  svg.addEventListener('touchend', hideHover);
+}
+
+function pjtPositionTooltip(wrap, svg, svgX, svgY, rect) {
+  const tooltip = document.getElementById('pjtTooltip');
+  if (!tooltip) return;
+  const ctx = _pjtChartCtx;
+  if (!ctx) return;
+  const px = (svgX / ctx.W) * rect.width;
+  const py = (svgY / ctx.H) * rect.height;
+  const wrapRect = wrap.getBoundingClientRect();
+  const offsetX = rect.left - wrapRect.left;
+  const offsetY = rect.top - wrapRect.top;
+  const tw = tooltip.offsetWidth || 140;
+  const th = tooltip.offsetHeight || 60;
+  let left = offsetX + px + 14;
+  if (left + tw > wrap.clientWidth - 6) left = offsetX + px - tw - 14;
+  if (left < 6) left = 6;
+  let top = offsetY + py - th - 10;
+  if (top < 6) top = offsetY + py + 14;
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+function pjtWireRangeTabs() {
+  document.querySelectorAll('.pjt-range-tab').forEach((btn) => {
+    if (btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      pjtSetRange(btn.dataset.range);
+    });
+  });
 }
 
 async function initPakistanTrajectory() {
@@ -1803,8 +2060,8 @@ async function initPakistanTrajectory() {
   }
 
   _pjtMacro = macro;
-  for (const s of macro.series) {
-    if (_pjtVisible[s.id] === undefined) _pjtVisible[s.id] = true;
+  if (!macro.series.some((s) => s.id === _pjtState.focused)) {
+    _pjtState.focused = macro.series[0]?.id || 'gdpGrowth';
   }
 
   const updatedEl = document.getElementById('pjtUpdated');
@@ -1819,7 +2076,10 @@ async function initPakistanTrajectory() {
   if (insightEl) insightEl.innerHTML = pjtFormatInsightToHtml(macro.staticInsight || '');
 
   pjtBuildKpis();
-  pjtRenderSvgChart();
+  pjtRenderFocusChart(false);
+  pjtRenderStats();
+  pjtWireChartHover();
+  pjtWireRangeTabs();
 
   const btn = document.getElementById('pjtAiBtn');
   const hint = document.getElementById('pjtAiHint');
