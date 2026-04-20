@@ -1545,29 +1545,61 @@ function pjtFormatAxisTick(v) {
 }
 
 /**
- * Turn bundled / AI text into readable HTML. Within a paragraph single newlines
- * are treated as part of flowing text (joined with a space). Paragraphs are
- * separated by blank lines. Bulleted blocks are rendered as <ul>. The
- * dev-only `npm run update-macro` hint is moved into a collapsed details block.
+ * Obsolete phrases that old bundles / cached AI responses still emit but that
+ * add no value now that the refresh button + hint are visible right next to
+ * the summary. We quietly drop these whole paragraphs.
+ */
+const PJT_INSIGHT_OBSOLETE = [
+  /tap\s+["“”]?AI\s+explanation["“”]?\s+for an optional/i,
+  /optional AI summary\s*\(below\)/i,
+  /to refresh numbers,\s*run:\s*npm run update-macro/i
+];
+
+/** Wrap % numbers and 4-digit years with styled spans for visual emphasis. */
+function pjtHighlightNumbers(escapedText) {
+  return escapedText
+    .replace(/([+\-−]?\d+(?:\.\d+)?)(%|pp|\s*percentage\s*points?)/g, (_m, num, unit) => {
+      const cleanUnit = unit.trim() === 'percentage point' || unit.trim() === 'percentage points' ? 'pp' : unit;
+      return `<span class="pjt-n">${num}<span class="pjt-n-unit">${cleanUnit}</span></span>`;
+    })
+    .replace(/(?<![\d\-])\b(19[89]\d|20\d{2})\b(?!\d)/g, '<span class="pjt-y">$1</span>');
+}
+
+/**
+ * Turn bundled / AI text into readable HTML. Drops obsolete UI-guidance
+ * paragraphs, joins single newlines into flowing prose, highlights numbers
+ * and years, and marks the first paragraph as the lead. Bulleted blocks are
+ * rendered as <ul>. The dev-only `npm run update-macro` hint is moved into a
+ * collapsed details block.
  */
 function pjtFormatInsightToHtml(raw) {
   let t = (raw || '').replace(/\s*To refresh numbers, run:\s*npm run update-macro\s*/gi, '').trim();
   if (!t) return '<p class="pjt-insight-p pjt-insight-p--muted">No analysis text yet.</p>';
-  const paras = t.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+  const paras = t
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !PJT_INSIGHT_OBSOLETE.some((re) => re.test(p)));
+
+  const bulletRe = /^(?:[-•*]|\u2013|\u2014)\s+/;
+  let leadRendered = false;
   const body = paras
     .map((block) => {
       const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-      const bulletRe = /^(?:[-•*]|\u2013|\u2014)\s+/;
       const allBullets = lines.length > 1 && lines.every((l) => bulletRe.test(l));
       if (allBullets) {
         const items = lines
-          .map((l) => `<li>${escapeHtml(l.replace(bulletRe, ''))}</li>`)
+          .map((l) => `<li>${pjtHighlightNumbers(escapeHtml(l.replace(bulletRe, '')))}</li>`)
           .join('');
         return `<ul class="pjt-insight-ul">${items}</ul>`;
       }
-      return `<p class="pjt-insight-p">${escapeHtml(lines.join(' '))}</p>`;
+      const prose = pjtHighlightNumbers(escapeHtml(lines.join(' ')));
+      const cls = !leadRendered ? 'pjt-insight-p pjt-insight-lead' : 'pjt-insight-p';
+      leadRendered = true;
+      return `<p class="${cls}">${prose}</p>`;
     })
     .join('');
+
   const dev =
     '<details class="pjt-dev-hint"><summary>Developer</summary><p class="pjt-insight-p pjt-insight-p--small">Regenerate static JSON: <code>npm run update-macro</code></p></details>';
   return body + dev;
