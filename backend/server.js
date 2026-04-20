@@ -9,6 +9,8 @@ const newsHandler         = require('./api/news');
 const marketHandler       = require('./api/market');
 const pakistanMapHandler  = require('./api/pakistan-map');
 const intelligenceHandler = require('./api/intelligence');
+const pakistanMacroHandler = require('./api/pakistan-macro');
+const pakistanMacroInsightHandler = require('./api/pakistan-macro-insight');
 
 const app  = express();
 const port = Number(process.env.PORT || 4000);
@@ -54,6 +56,8 @@ app.get('/api/news',         (req, res) => newsHandler(req, res));
 app.get('/api/market',       (req, res) => marketHandler(req, res));
 app.get('/api/pakistan-map', (req, res) => pakistanMapHandler(req, res));
 app.get('/api/intelligence', (req, res) => intelligenceHandler(req, res));
+app.get('/api/pakistan-macro', (req, res) => pakistanMacroHandler(req, res));
+app.get('/api/pakistan-macro-insight', (req, res) => pakistanMacroInsightHandler(req, res));
 
 // ── Root health ping ──────────────────────────────────────────────────────────
 app.get('/', (_req, res) => {

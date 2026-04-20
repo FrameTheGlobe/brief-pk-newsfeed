@@ -56,6 +56,13 @@ describe('static routes', () => {
     assert.match(res.headers['content-type'] || '', /css/);
     assert.ok(res.text.includes('{'), 'looks like CSS');
   });
+
+  test('GET /data/pakistan-macro.json', async () => {
+    const res = await request(app).get('/data/pakistan-macro.json').expect(200);
+    assert.match(res.headers['content-type'] || '', /json/);
+    const b = JSON.parse(res.text);
+    assert.ok(Array.isArray(b.series));
+  });
 });
 
 describe('JSON APIs', () => {
@@ -91,6 +98,19 @@ describe('JSON APIs', () => {
       assert.ok(Array.isArray(b.points), 'expected points[] from map API');
     }
   );
+
+  test('GET /api/pakistan-macro returns WDI snapshot', async () => {
+    const res = await request(app).get('/api/pakistan-macro').expect(200);
+    const b = res.body;
+    assert.strictEqual(typeof b.meta?.updatedAt, 'string');
+    assert.ok(Array.isArray(b.series) && b.series.length >= 2);
+  });
+
+  test('GET /api/pakistan-macro-insight returns explanation text', async () => {
+    const res = await request(app).get('/api/pakistan-macro-insight').expect(200);
+    assert.strictEqual(typeof res.body.text, 'string');
+    assert.ok(res.body.text.length > 40);
+  });
 
   test('GET /api/intelligence — 503 without Groq key or 200 with service', async () => {
     const res = await request(app).get('/api/intelligence');

@@ -21,11 +21,19 @@
         { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
         { "key": "Vary",          "value": "Accept-Encoding" }
       ]
+    },
+    {
+      "source": "/data/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=604800, stale-while-revalidate=86400" },
+        { "key": "Vary",          "value": "Accept-Encoding" }
+      ]
     }
   ],
   "rewrites": [
     { "source": "/",         "destination": "/public/index.html" },
     { "source": "/css/(.*)", "destination": "/public/css/$1" },
-    { "source": "/js/(.*)",  "destination": "/public/js/$1" }
+    { "source": "/js/(.*)",  "destination": "/public/js/$1" },
+    { "source": "/data/(.*)", "destination": "/public/data/$1" }
   ]
 }

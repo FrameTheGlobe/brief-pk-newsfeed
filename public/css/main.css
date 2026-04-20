@@ -3681,3 +3681,227 @@ button:focus-visible,
   }
 }
 
+/* ═══ Pakistan Trajectory (macro flagship widget) ═══════════════════════════ */
+.pakistan-trajectory-section {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 0 20px 16px;
+}
+
+.pjt-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.pjt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--surface-2);
+}
+
+.pjt-title {
+  font-family: var(--brand-font);
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.pjt-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.pjt-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.pjt-updated {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pjt-source-link {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--brand-blue-dim);
+  text-decoration: none;
+}
+
+.pjt-source-link:hover {
+  text-decoration: underline;
+}
+
+.pjt-disclaimer {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  background: var(--surface);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.pjt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.pjt-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono-font);
+  font-size: 10px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pjt-leg-item input {
+  accent-color: var(--brand-navy);
+}
+
+.pjt-chart-wrap {
+  position: relative;
+  padding: 8px 8px 4px;
+  min-height: 200px;
+  background: var(--surface);
+}
+
+.pjt-chart-skel {
+  position: absolute;
+  inset: 12px;
+  border-radius: var(--radius-md);
+}
+
+.pjt-chart-skel[hidden] {
+  display: none;
+}
+
+.pjt-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 320px;
+}
+
+.pjt-chart .pjt-axis {
+  stroke: var(--panel-border);
+  stroke-width: 1;
+}
+
+.pjt-chart .pjt-grid {
+  stroke: var(--panel-border);
+  stroke-opacity: 0.45;
+  stroke-width: 0.5;
+}
+
+.pjt-chart .pjt-line {
+  fill: none;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pjt-chart .pjt-dot {
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.pjt-norm-note {
+  margin: 0;
+  padding: 6px 16px 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--mono-font);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.pjt-insight-block {
+  padding: 12px 16px 16px;
+  background: var(--surface-2);
+}
+
+.pjt-insight-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.pjt-ai-btn {
+  font-family: var(--mono-font);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--brand-navy);
+  background: var(--brand-navy);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.pjt-ai-btn:hover {
+  background: var(--brand-navy-2);
+}
+
+.pjt-ai-btn:active {
+  transform: scale(0.98);
+}
+
+.pjt-ai-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.pjt-ai-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 520px;
+  line-height: 1.35;
+}
+
+.pjt-insight-text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-main);
+  white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .pakistan-trajectory-section {
+    padding: 0 12px 12px;
+  }
+
+  .pjt-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pjt-meta {
+    align-items: flex-start;
+  }
+}
+

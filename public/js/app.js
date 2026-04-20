@@ -1457,6 +1457,188 @@ function initIntelligence() {
   setInterval(() => fetchIntelligence(), INTEL_CLIENT_TTL);
 }
 
+// ── Pakistan Trajectory (WDI macro panel) ───────────────────────────────────
+
+const PJT_COLORS = {
+  gdpGrowth: '#0369a1',
+  inflation: '#b45309',
+  extDebtGni: '#7c3aed',
+  poverty: '#dc2626'
+};
+
+let _pjtMacro = null;
+const _pjtVisible = Object.create(null);
+
+function pjtNormalizePoints(points) {
+  const vs = points.map((p) => p.v);
+  const min = Math.min(...vs);
+  const max = Math.max(...vs);
+  const span = Math.max(max - min, 1e-9);
+  return points.map((p) => ({
+    y: p.y,
+    v: p.v,
+    n: span <= 1e-9 ? 0.5 : (p.v - min) / span
+  }));
+}
+
+function pjtRenderSvgChart() {
+  const svg = document.getElementById('pjtChart');
+  const skel = document.getElementById('pjtChartSkel');
+  if (!svg || !_pjtMacro) return;
+
+  const meta = _pjtMacro.meta;
+  const x0 = meta.range.from;
+  const x1 = Math.min(meta.range.to, new Date().getFullYear());
+  const spanX = Math.max(x1 - x0, 1);
+  const W = 920;
+  const H = 220;
+  const padL = 48;
+  const padR = 16;
+  const padT = 16;
+  const padB = 36;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const xScale = (yr) => padL + ((yr - x0) / spanX) * innerW;
+  const yScale = (n) => padT + innerH - n * innerH;
+
+  const parts = [];
+  parts.push(
+    `<rect x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="none" stroke="currentColor" stroke-opacity="0.12" rx="2"/>`
+  );
+
+  for (let g = 0; g <= 4; g++) {
+    const yy = padT + (innerH * g) / 4;
+    parts.push(`<line class="pjt-grid" x1="${padL}" y1="${yy}" x2="${padL + innerW}" y2="${yy}" />`);
+  }
+
+  const yearStep = spanX > 35 ? 10 : 5;
+  let yr = Math.ceil(x0 / yearStep) * yearStep;
+  for (; yr <= x1; yr += yearStep) {
+    const x = xScale(yr);
+    parts.push(`<line class="pjt-grid" x1="${x}" y1="${padT}" x2="${x}" y2="${padT + innerH}" />`);
+    parts.push(
+      `<text x="${x}" y="${H - 8}" text-anchor="middle" font-size="11" font-family="JetBrains Mono,monospace" fill="currentColor" fill-opacity="0.42">${yr}</text>`
+    );
+  }
+
+  for (const s of _pjtMacro.series) {
+    if (!_pjtVisible[s.id]) continue;
+    const col = PJT_COLORS[s.id] || '#64748b';
+    const norm = pjtNormalizePoints(s.points);
+    if (!norm.length) continue;
+    if (s.sparse) {
+      for (const pt of norm) {
+        const cx = xScale(pt.y);
+        const cy = yScale(pt.n);
+        parts.push(`<circle class="pjt-dot" cx="${cx}" cy="${cy}" r="5" fill="${col}" />`);
+      }
+      for (let i = 1; i < norm.length; i++) {
+        const a = norm[i - 1];
+        const b = norm[i];
+        parts.push(
+          `<path class="pjt-line" stroke="${col}" d="M ${xScale(a.y)} ${yScale(a.n)} L ${xScale(b.y)} ${yScale(b.n)}" />`
+        );
+      }
+    } else {
+      const d = norm.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${xScale(pt.y)} ${yScale(pt.n)}`).join(' ');
+      parts.push(`<path class="pjt-line" stroke="${col}" d="${d}" />`);
+    }
+  }
+
+  parts.push(
+    `<text x="${padL}" y="13" font-size="12" font-weight="600" font-family="Inter,sans-serif" fill="currentColor" fill-opacity="0.5">Each series scaled 0–100 for comparison</text>`
+  );
+
+  svg.innerHTML = parts.join('');
+  svg.setAttribute('class', 'pjt-chart');
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  if (skel) skel.hidden = true;
+}
+
+function pjtBuildLegend() {
+  const el = document.getElementById('pjtLegend');
+  if (!el || !_pjtMacro) return;
+  el.innerHTML = _pjtMacro.series
+    .map((s) => {
+      const col = PJT_COLORS[s.id] || '#666';
+      const checked = _pjtVisible[s.id] !== false;
+      return `<label class="pjt-leg-item"><input type="checkbox" data-pjt="${escapeHtml(s.id)}" ${checked ? 'checked' : ''} /><span style="color:${col};font-weight:700">●</span> ${escapeHtml(s.shortLabel)} <span style="opacity:0.65">(${escapeHtml(s.unit)})</span></label>`;
+    })
+    .join('');
+  el.querySelectorAll('input[data-pjt]').forEach((inp) => {
+    inp.addEventListener('change', () => {
+      const id = inp.getAttribute('data-pjt');
+      if (id) _pjtVisible[id] = inp.checked;
+      pjtRenderSvgChart();
+    });
+  });
+}
+
+async function initPakistanTrajectory() {
+  const section = document.getElementById('pakistanTrajectorySection');
+  if (!section) return;
+
+  let macro;
+  try {
+    const r = await fetch('/data/pakistan-macro.json', { cache: 'default' });
+    if (!r.ok) throw new Error(String(r.status));
+    macro = await r.json();
+  } catch {
+    try {
+      const r2 = await fetch(`${API_BASE}/api/pakistan-macro`);
+      if (!r2.ok) throw new Error(String(r2.status));
+      macro = await r2.json();
+    } catch {
+      section.style.display = 'none';
+      return;
+    }
+  }
+
+  _pjtMacro = macro;
+  for (const s of macro.series) {
+    if (_pjtVisible[s.id] === undefined) _pjtVisible[s.id] = true;
+  }
+
+  const updatedEl = document.getElementById('pjtUpdated');
+  if (updatedEl && macro.meta?.updatedAt) {
+    updatedEl.textContent = `Data: ${macro.meta.updatedAt.slice(0, 10)}`;
+  }
+  const disc = document.getElementById('pjtDisclaimer');
+  if (disc) disc.textContent = macro.meta?.disclaimer || '';
+
+  const insightEl = document.getElementById('pjtInsightText');
+  if (insightEl) insightEl.textContent = macro.staticInsight || '';
+
+  pjtBuildLegend();
+  pjtRenderSvgChart();
+
+  const btn = document.getElementById('pjtAiBtn');
+  const hint = document.getElementById('pjtAiHint');
+  if (btn && !btn.dataset.bound) {
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      if (hint) hint.textContent = 'Loading…';
+      try {
+        const res = await fetch(`${API_BASE}/api/pakistan-macro-insight`);
+        const j = await res.json();
+        if (insightEl) insightEl.textContent = j.text || '';
+        if (hint) {
+          hint.textContent =
+            j.source === 'ai'
+              ? (j.cached ? 'Served from shared server cache (low cost).' : 'Fresh AI text; cached for all visitors.')
+              : 'Bundled analysis (set GROQ_API_KEY on the API server for AI).';
+        }
+      } catch {
+        if (hint) hint.textContent = 'Insight API unreachable — static text above remains.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+}
+
 // ── Boot ───────────────────────────────────────────────────────────────────
 
 function initScrollToTop() {
@@ -1494,7 +1676,7 @@ async function init() {
   }
 
   // Always do a fresh network fetch (cache is just for fast initial paint)
-  await refreshData();
+  await Promise.all([refreshData(), initPakistanTrajectory()]);
   setInterval(refreshData, REFRESH_MS);
 }
 

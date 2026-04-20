@@ -19,6 +19,8 @@ const newsHandler         = require('./backend/api/news');
 const marketHandler       = require('./backend/api/market');
 const pakistanMapHandler  = require('./backend/api/pakistan-map');
 const intelligenceHandler = require('./backend/api/intelligence');
+const pakistanMacroHandler = require('./backend/api/pakistan-macro');
+const pakistanMacroInsightHandler = require('./backend/api/pakistan-macro-insight');
 const healthHandler       = require('./backend/api/health');
 
 const app  = express();
@@ -32,6 +34,8 @@ app.get('/api/news',         (req, res) => newsHandler(req, res));
 app.get('/api/market',       (req, res) => marketHandler(req, res));
 app.get('/api/pakistan-map', (req, res) => pakistanMapHandler(req, res));
 app.get('/api/intelligence', (req, res) => intelligenceHandler(req, res));
+app.get('/api/pakistan-macro', (req, res) => pakistanMacroHandler(req, res));
+app.get('/api/pakistan-macro-insight', (req, res) => pakistanMacroInsightHandler(req, res));
 
 // ── Static frontend ───────────────────────────────────────────────────────────
 const staticOpts = {
@@ -43,6 +47,7 @@ const staticOpts = {
 app.use('/css', express.static(path.join(__dirname, 'public/css'), staticOpts));
 app.use('/js',  express.static(path.join(__dirname, 'public/js'),  staticOpts));
 app.use('/img', express.static(path.join(__dirname, 'public/img'), staticOpts));
+app.use('/data', express.static(path.join(__dirname, 'public/data'), { etag: true, maxAge: 7 * 24 * 60 * 60 * 1000 }));
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'), { etag: false, lastModified: false });
